@@ -38,6 +38,14 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.get("/", (_req, res) => {
+  res.json({
+    status: "ok",
+    service: "ems-api",
+    health: "/api/healthz",
+  });
+});
+
 app.use("/api", router);
 
 export default app;
