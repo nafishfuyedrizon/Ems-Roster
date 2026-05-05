@@ -8,13 +8,18 @@ let poolInstance: mysql.Pool | null = null;
 let dbInstance: ReturnType<typeof drizzle> | null = null;
 
 function ensureDatabaseUrl() {
-  if (!process.env.DATABASE_URL) {
+  const globalDatabaseUrl = (globalThis as Record<string, unknown>)["__EMS_DATABASE_URL__"];
+  const databaseUrl =
+    process.env.DATABASE_URL ||
+    (typeof globalDatabaseUrl === "string" && globalDatabaseUrl.length > 0 ? globalDatabaseUrl : undefined);
+
+  if (!databaseUrl) {
     throw new Error(
       "DATABASE_URL must be set. Did you forget to provision a database?",
     );
   }
 
-  return process.env.DATABASE_URL;
+  return databaseUrl;
 }
 
 function ensurePool() {
