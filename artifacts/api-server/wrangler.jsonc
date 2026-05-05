@@ -11,6 +11,12 @@
   "observability": {
     "enabled": true
   },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "8ca446eb6bef435ba427a19145bec462"
+    }
+  ],
   "vars": {
     "API_PORT": "3000"
   }
