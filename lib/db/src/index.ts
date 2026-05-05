@@ -38,13 +38,15 @@ void hydrateDatabaseEnv();
 
 export const pool = new Proxy({} as mysql.Pool, {
   get(_target, prop, receiver) {
-    return Reflect.get(ensurePool(), prop, receiver);
+    const value = Reflect.get(ensurePool(), prop, ensurePool());
+    return typeof value === "function" ? value.bind(ensurePool()) : value;
   },
 });
 
 export const db = new Proxy({} as ReturnType<typeof drizzle>, {
   get(_target, prop, receiver) {
-    return Reflect.get(ensureDb(), prop, receiver);
+    const value = Reflect.get(ensureDb(), prop, ensureDb());
+    return typeof value === "function" ? value.bind(ensureDb()) : value;
   },
 });
 
