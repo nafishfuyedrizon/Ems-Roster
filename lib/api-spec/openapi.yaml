@@ -1,0 +1,890 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: EMS Management Panel API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: members
+    description: EMS member operations
+  - name: duty-logs
+    description: Duty time log operations
+  - name: licenses
+    description: Discord license tracking
+  - name: stats
+    description: Dashboard statistics
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /members:
+    get:
+      operationId: listMembers
+      tags: [members]
+      summary: List all EMS members
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [Active, LOA, Vacant, Inactive]
+        - name: rank
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Member"
+    post:
+      operationId: createMember
+      tags: [members]
+      summary: Create a new EMS member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMemberBody"
+      responses:
+        "201":
+          description: Created member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+
+  /members/{id}:
+    get:
+      operationId: getMember
+      tags: [members]
+      summary: Get a member by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        "404":
+          description: Not found
+    put:
+      operationId: updateMember
+      tags: [members]
+      summary: Update a member
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMemberBody"
+      responses:
+        "200":
+          description: Updated member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+    delete:
+      operationId: deleteMember
+      tags: [members]
+      summary: Delete a member
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /duty-logs:
+    get:
+      operationId: listDutyLogs
+      tags: [duty-logs]
+      summary: List duty logs
+      parameters:
+        - name: memberId
+          in: query
+          schema:
+            type: integer
+        - name: weekStart
+          in: query
+          schema:
+            type: string
+        - name: shiftType
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of duty logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DutyLog"
+    post:
+      operationId: createDutyLog
+      tags: [duty-logs]
+      summary: Create a duty log entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDutyLogBody"
+      responses:
+        "201":
+          description: Created duty log
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DutyLog"
+
+  /duty-logs/{id}:
+    put:
+      operationId: updateDutyLog
+      tags: [duty-logs]
+      summary: Update a duty log entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDutyLogBody"
+      responses:
+        "200":
+          description: Updated duty log
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DutyLog"
+    delete:
+      operationId: deleteDutyLog
+      tags: [duty-logs]
+      summary: Delete a duty log entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /members/{id}/weekly-stats:
+    get:
+      operationId: getMemberWeeklyStats
+      tags: [members]
+      summary: Get weekly duty stats for a member
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Weekly stats for the member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberWeeklyStats"
+
+  /licenses:
+    get:
+      operationId: listLicenses
+      tags: [licenses]
+      summary: List all tracked Discord licenses
+      responses:
+        "200":
+          description: List of licenses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/License"
+    post:
+      operationId: createLicense
+      tags: [licenses]
+      summary: Add a license entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLicenseBody"
+      responses:
+        "201":
+          description: Created license
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/License"
+
+  /licenses/{id}:
+    delete:
+      operationId: deleteLicense
+      tags: [licenses]
+      summary: Delete a license
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /stats/dashboard:
+    get:
+      operationId: getDashboardStats
+      tags: [stats]
+      summary: Get dashboard summary stats
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /stats/roster:
+    get:
+      operationId: getRosterWithWeeklyDuty
+      tags: [stats]
+      summary: Get full roster with weekly duty times
+      responses:
+        "200":
+          description: Full roster with weekly duty data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RosterEntry"
+
+  /stats/shift-roster:
+    get:
+      operationId: getShiftRoster
+      tags: [stats]
+      summary: Get full roster with per-shift breakdown per week and monthly totals
+      responses:
+        "200":
+          description: Shift roster with per-shift data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ShiftRosterEntry"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Member:
+      type: object
+      properties:
+        id:
+          type: integer
+        callSign:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [Active, LOA, Vacant, Inactive]
+        rank:
+          type: string
+        discordId:
+          type: string
+          nullable: true
+        licenseKey:
+          type: string
+          nullable: true
+        joinedAt:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        cid:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        lastPromotionDate:
+          type: string
+          nullable: true
+        medTrex:
+          type: string
+          enum: [Advance, Trainee, "N/A"]
+          nullable: true
+        strike:
+          type: string
+          enum: ["N/A", "1/3", "2/3", "3/3"]
+          nullable: true
+        highCamNoted:
+          type: string
+          nullable: true
+        ftoMember:
+          type: string
+          nullable: true
+          enum: ["N/A", "FTP Supervisor", "FTP Trainer", "FTP Advanced", "FTP Recruit"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - callSign
+        - name
+        - status
+        - rank
+        - createdAt
+        - updatedAt
+
+    CreateMemberBody:
+      type: object
+      properties:
+        callSign:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [Active, LOA, Vacant, Inactive]
+        rank:
+          type: string
+        discordId:
+          type: string
+          nullable: true
+        licenseKey:
+          type: string
+          nullable: true
+        joinedAt:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        cid:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        lastPromotionDate:
+          type: string
+          nullable: true
+        medTrex:
+          type: string
+          enum: [Advance, Trainee, "N/A"]
+          nullable: true
+        strike:
+          type: string
+          enum: ["N/A", "1/3", "2/3", "3/3"]
+          nullable: true
+        highCamNoted:
+          type: string
+          nullable: true
+        ftoMember:
+          type: string
+          nullable: true
+          enum: ["N/A", "FTP Supervisor", "FTP Trainer", "FTP Advanced", "FTP Recruit"]
+      required:
+        - callSign
+        - name
+        - status
+        - rank
+
+    UpdateMemberBody:
+      type: object
+      properties:
+        callSign:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [Active, LOA, Vacant, Inactive]
+        rank:
+          type: string
+        discordId:
+          type: string
+          nullable: true
+        licenseKey:
+          type: string
+          nullable: true
+        joinedAt:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        cid:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        lastPromotionDate:
+          type: string
+          nullable: true
+        medTrex:
+          type: string
+          enum: [Advance, Trainee, "N/A"]
+          nullable: true
+        strike:
+          type: string
+          enum: ["N/A", "1/3", "2/3", "3/3"]
+          nullable: true
+        highCamNoted:
+          type: string
+          nullable: true
+        ftoMember:
+          type: string
+          nullable: true
+          enum: ["N/A", "FTP Supervisor", "FTP Trainer", "FTP Advanced", "FTP Recruit"]
+
+    DutyLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        memberId:
+          type: integer
+        weekStart:
+          type: string
+          description: ISO date string for start of the week (Monday)
+        shiftType:
+          type: string
+          enum: [Evening, Night, Midnight, Full]
+        durationMinutes:
+          type: integer
+        logDate:
+          type: string
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - memberId
+        - weekStart
+        - shiftType
+        - durationMinutes
+        - logDate
+        - createdAt
+
+    CreateDutyLogBody:
+      type: object
+      properties:
+        memberId:
+          type: integer
+        weekStart:
+          type: string
+        shiftType:
+          type: string
+          enum: [Evening, Night, Midnight, Full]
+        durationMinutes:
+          type: integer
+        logDate:
+          type: string
+        notes:
+          type: string
+          nullable: true
+      required:
+        - memberId
+        - weekStart
+        - shiftType
+        - durationMinutes
+        - logDate
+
+    UpdateDutyLogBody:
+      type: object
+      properties:
+        shiftType:
+          type: string
+          enum: [Evening, Night, Midnight, Full]
+        durationMinutes:
+          type: integer
+        logDate:
+          type: string
+        notes:
+          type: string
+          nullable: true
+
+    MemberWeeklyStats:
+      type: object
+      properties:
+        memberId:
+          type: integer
+        memberName:
+          type: string
+        callSign:
+          type: string
+        rank:
+          type: string
+        totalMinutes:
+          type: integer
+        weeks:
+          type: array
+          items:
+            type: object
+            properties:
+              weekStart:
+                type: string
+              weekLabel:
+                type: string
+              totalMinutes:
+                type: integer
+              eveningMinutes:
+                type: integer
+              nightMinutes:
+                type: integer
+              midnightMinutes:
+                type: integer
+              fullMinutes:
+                type: integer
+            required:
+              - weekStart
+              - weekLabel
+              - totalMinutes
+              - eveningMinutes
+              - nightMinutes
+              - midnightMinutes
+              - fullMinutes
+      required:
+        - memberId
+        - memberName
+        - callSign
+        - rank
+        - totalMinutes
+        - weeks
+
+    License:
+      type: object
+      properties:
+        id:
+          type: integer
+        licenseKey:
+          type: string
+        memberId:
+          type: integer
+          nullable: true
+        memberName:
+          type: string
+          nullable: true
+        onDutyCount:
+          type: integer
+        offDutyCount:
+          type: integer
+        lastSeen:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - licenseKey
+        - onDutyCount
+        - offDutyCount
+        - createdAt
+
+    CreateLicenseBody:
+      type: object
+      properties:
+        licenseKey:
+          type: string
+        memberId:
+          type: integer
+          nullable: true
+        onDutyCount:
+          type: integer
+        offDutyCount:
+          type: integer
+        lastSeen:
+          type: string
+          nullable: true
+      required:
+        - licenseKey
+        - onDutyCount
+        - offDutyCount
+
+    DashboardStats:
+      type: object
+      properties:
+        totalMembers:
+          type: integer
+        activeMembers:
+          type: integer
+        loaMembers:
+          type: integer
+        vacantMembers:
+          type: integer
+        totalDutyHoursThisWeek:
+          type: integer
+        totalDutyHoursThisMonth:
+          type: integer
+        topPerformerThisWeek:
+          type: string
+          nullable: true
+        topPerformersWeekly:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              callSign:
+                type: string
+              minutes:
+                type: integer
+            required:
+              - name
+              - callSign
+              - minutes
+        topPerformersMonthly:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              callSign:
+                type: string
+              minutes:
+                type: integer
+            required:
+              - name
+              - callSign
+              - minutes
+        peakHourWeekLabel:
+          type: string
+          nullable: true
+        peakHourWeekMinutes:
+          type: integer
+        rankBreakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              rank:
+                type: string
+              count:
+                type: integer
+            required:
+              - rank
+              - count
+        activeDutyHoursThisWeek:
+          type: integer
+        loaDutyHoursThisWeek:
+          type: integer
+        inactiveDutyHoursThisWeek:
+          type: integer
+        uniqueLicensesTracked:
+          type: integer
+        inactivePersonnel:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              callSign:
+                type: string
+              rank:
+                type: string
+              redWeeks:
+                type: integer
+            required:
+              - id
+              - name
+              - callSign
+              - rank
+              - redWeeks
+      required:
+        - totalMembers
+        - activeMembers
+        - loaMembers
+        - vacantMembers
+        - totalDutyHoursThisWeek
+        - totalDutyHoursThisMonth
+        - activeDutyHoursThisWeek
+        - loaDutyHoursThisWeek
+        - inactiveDutyHoursThisWeek
+        - uniqueLicensesTracked
+        - rankBreakdown
+
+    RosterEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        callSign:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+        rank:
+          type: string
+        joinedAt:
+          type: string
+          nullable: true
+        weeks:
+          type: array
+          items:
+            type: object
+            properties:
+              weekStart:
+                type: string
+              weekLabel:
+                type: string
+              totalMinutes:
+                type: integer
+            required:
+              - weekStart
+              - weekLabel
+              - totalMinutes
+        totalMonthMinutes:
+          type: integer
+      required:
+        - id
+        - callSign
+        - name
+        - status
+        - rank
+        - weeks
+        - totalMonthMinutes
+
+    ShiftRosterEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        callSign:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+        rank:
+          type: string
+        joinedAt:
+          type: string
+          nullable: true
+        weeks:
+          type: array
+          items:
+            type: object
+            properties:
+              weekStart:
+                type: string
+              weekLabel:
+                type: string
+              eveningMinutes:
+                type: integer
+              nightMinutes:
+                type: integer
+              midnightMinutes:
+                type: integer
+              fullMinutes:
+                type: integer
+              totalMinutes:
+                type: integer
+            required:
+              - weekStart
+              - weekLabel
+              - eveningMinutes
+              - nightMinutes
+              - midnightMinutes
+              - fullMinutes
+              - totalMinutes
+        monthEvening:
+          type: integer
+        monthNight:
+          type: integer
+        monthMidnight:
+          type: integer
+        monthFull:
+          type: integer
+        monthTotal:
+          type: integer
+      required:
+        - id
+        - callSign
+        - name
+        - status
+        - rank
+        - weeks
+        - monthEvening
+        - monthNight
+        - monthMidnight
+        - monthFull
+        - monthTotal

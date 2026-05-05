@@ -1,0 +1,37 @@
+WHAT TO GIVE THE HOSTING / VPS PERSON
+====================================
+
+Before sending this package, fill in your actual values in `.env.local`.
+
+Minimum items to provide:
+1. MySQL / MariaDB host
+2. MySQL / MariaDB port
+3. Database name
+4. Database user
+5. Database password
+6. Admin master key 1
+7. Admin master key 2
+
+If Discord login or the bot is used, also provide:
+8. Discord bot token
+9. Discord timestamp channel ID
+10. Discord client ID
+11. Discord client secret
+12. Domain URL / callback URL
+
+Ready format:
+DATABASE_URL=mysql://DB_USER:DB_PASSWORD@DB_HOST:3306/DB_NAME
+
+Then send the ZIP to the hosting/VPS person.
+
+What they need to do:
+- Extract the zip
+- Check `.env.local`
+- Run `pnpm install`
+- Run `pnpm --filter @workspace/db run push`
+- Run `pnpm --filter @workspace/db run import-dump`
+- Start the API and Panel
+
+For the live domain, they must map:
+- frontend -> localhost:5173
+- api -> localhost:5000

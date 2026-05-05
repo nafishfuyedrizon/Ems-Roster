@@ -1,0 +1,127 @@
+EMS WEBSITE HOSTING / SERVER SETUP NOTE
+======================================
+
+This package does not require any `.bat` files for VPS/server setup.
+The hosting or server person can run the website by following the steps below.
+
+1. Server requirements
+----------------------
+- Windows VPS / Windows Server
+- Node.js LTS
+- pnpm
+- MySQL / MariaDB database
+- Domain, reverse proxy, and SSL configured on the server
+
+Important:
+- This project is now MySQL / MariaDB compatible
+- `DATABASE_URL` must contain a valid MySQL connection string
+
+2. Extract the project
+----------------------
+- Extract the zip file
+- Open the extracted project folder
+
+3. Environment file
+-------------------
+- If `.env.local` is already included, use it
+- If `.env.local` is not present, copy `.env.local.example` to `.env.local`
+- Minimum required values:
+
+DATABASE_URL=mysql://USER:PASSWORD@HOST:3306/hello_bot
+API_PORT=5000
+PANEL_PORT=5173
+BASE_PATH=/
+API_PROXY_TARGET=http://localhost:5000
+NODE_ENV=development
+AUTO_IMPORT_DATABASE=true
+ADMIN_MASTER_KEYS=your_key_1,your_key_2
+
+If Discord login or the bot is needed:
+
+DISCORD_CLIENT_ID=
+DISCORD_CLIENT_SECRET=
+DISCORD_REDIRECT_URI=
+DISCORD_BOT_TOKEN=
+DISCORD_TIMESTAMP_CHANNEL_ID=
+
+4. Install dependencies
+-----------------------
+Run from the project folder:
+
+pnpm install
+
+If pnpm is not installed:
+
+npm install -g pnpm
+
+5. Push the database schema
+---------------------------
+Run:
+
+pnpm --filter @workspace/db run push
+
+6. Import bundled data
+----------------------
+Run:
+
+pnpm --filter @workspace/db run import-dump
+
+If the database is already in use, take a backup first.
+If you are connecting to an already prepared EMS database that already contains the required tables and data, you can skip steps 5 and 6 and start the API/Panel directly.
+
+7. Start the API
+----------------
+Run in one terminal:
+
+pnpm --filter @workspace/api-server run build
+pnpm --filter @workspace/api-server run start
+
+Default API health URL:
+
+http://localhost:5000/api/healthz
+
+8. Start the website / panel
+----------------------------
+Run in another terminal:
+
+pnpm --filter @workspace/ems-panel run dev
+
+Default website URL:
+
+http://localhost:5173
+
+9. Live domain setup
+--------------------
+Map the services in your reverse proxy / web server:
+
+- frontend -> http://127.0.0.1:5173
+- api      -> http://127.0.0.1:5000
+
+SSL / HTTPS should be configured by the domain owner or server person.
+
+10. Run 24/7
+------------
+To keep the website live all the time, use one of these:
+
+- PM2
+- NSSM
+- Task Scheduler
+- Windows Service
+
+Use one of them to auto-start the API and Panel.
+
+11. Project code locations
+--------------------------
+- Frontend: `artifacts/ems-panel/src`
+- Backend: `artifacts/api-server/src`
+- DB: `lib/db`
+- Windows scripts: `scripts/windows`
+
+12. Basic checks
+----------------
+- Does the API health URL open?
+- Does the website open?
+- Does the database connect successfully?
+- Is the domain proxy configured correctly?
+
+Done.

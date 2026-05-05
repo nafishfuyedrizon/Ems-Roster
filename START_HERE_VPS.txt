@@ -1,0 +1,27 @@
+EMS WEBSITE VPS HANDOFF
+======================
+
+This package does not include `.bat` files.
+
+The hosting/VPS person should do this:
+
+1. Extract the zip
+2. Open the extracted folder
+3. Confirm `.env.local` is present
+4. Read:
+   HOSTING_SERVER_SETUP_NOTE.txt
+
+If the provided database already contains the EMS tables and data, the hosting person can skip the schema push/import step and go straight to starting the API and Panel.
+
+Default local URLs after start:
+   Website: http://localhost:5173
+   API:     http://localhost:5000/api/healthz
+
+Important:
+- This project uses MySQL / MariaDB
+- If database is remote, DATABASE_URL in .env.local must be correct
+- For live domain, VPS owner must map the domain to this app on the server side
+
+Main note files:
+- HOSTING_SERVER_SETUP_NOTE.txt
+- WINDOWS_VPS_README.md

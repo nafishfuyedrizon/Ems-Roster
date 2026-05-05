@@ -1,0 +1,18 @@
+This package includes a fix for the database push error.
+
+Previous error:
+No schema files found for path config ... src/schema/index.ts
+
+Cause:
+Drizzle was only seeing the `index.ts` re-export and not the actual table files.
+
+Fix:
+`lib/db/drizzle.config.ts` now uses `./src/schema/*.ts`.
+
+When `RUN_WINDOWS.bat` is used, it now:
+1. Ensures Docker/MySQL is ready
+2. Runs `pnpm install`
+3. Pushes the database schema
+4. Imports `data/database_dump.json`
+5. Starts the API, Panel, and Bot
+6. Auto-opens the browser
