@@ -1,13 +1,5 @@
-import { env as workerEnv } from "cloudflare:workers";
+import "@workspace/db/load-env";
 import { httpServerHandler } from "cloudflare:node";
-
-if (
-  !process.env.DATABASE_URL &&
-  workerEnv.HYPERDRIVE &&
-  typeof workerEnv.HYPERDRIVE.connectionString === "string"
-) {
-  process.env.DATABASE_URL = workerEnv.HYPERDRIVE.connectionString;
-}
 
 const { default: app } = await import("./app");
 
