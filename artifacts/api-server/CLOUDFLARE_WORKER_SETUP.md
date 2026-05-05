@@ -17,13 +17,12 @@ In Cloudflare Dashboard:
    - password: your existing DB password
 5. Copy the Hyperdrive ID
 
-## 2. Update wrangler config
+## 2. Add Worker bindings / secrets in Cloudflare
 
-Edit `artifacts/api-server/wrangler.jsonc` and replace:
+When creating the Worker in Cloudflare, add a Hyperdrive binding:
 
-- `REPLACE_WITH_HYPERDRIVE_ID`
-
-with the real Hyperdrive ID.
+- binding name: `HYPERDRIVE`
+- target: the Hyperdrive configuration you created
 
 ## 3. Set Worker secrets / vars
 

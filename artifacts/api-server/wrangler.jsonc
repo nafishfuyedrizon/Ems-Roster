@@ -13,11 +13,5 @@
   },
   "vars": {
     "API_PORT": "3000"
-  },
-  "hyperdrive": [
-    {
-      "binding": "HYPERDRIVE",
-      "id": "REPLACE_WITH_HYPERDRIVE_ID"
-    }
-  ]
+  }
 }
