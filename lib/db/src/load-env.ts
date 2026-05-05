@@ -1,4 +1,5 @@
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 if (!process.env.DATABASE_URL) {
   try {
@@ -16,11 +17,22 @@ if (!process.env.DATABASE_URL) {
   } catch {}
 }
 
+let workerSafeImportDir: string | null = null;
+try {
+  if (typeof import.meta.url === "string" && import.meta.url.startsWith("file:")) {
+    workerSafeImportDir = path.dirname(fileURLToPath(import.meta.url));
+  }
+} catch {}
+
 const envCandidates = [
   path.resolve(process.cwd(), ".env.local"),
   path.resolve(process.cwd(), ".env"),
-  path.resolve(import.meta.dirname, "../../../.env.local"),
-  path.resolve(import.meta.dirname, "../../../.env"),
+  ...(workerSafeImportDir
+    ? [
+        path.resolve(workerSafeImportDir, "../../../.env.local"),
+        path.resolve(workerSafeImportDir, "../../../.env"),
+      ]
+    : []),
 ];
 
 for (const envFile of envCandidates) {
