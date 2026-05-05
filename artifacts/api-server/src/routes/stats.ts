@@ -229,7 +229,8 @@ async function getDutyStatsLogs(includeRunning = false): Promise<DutyStatsLog[]>
 
   if (!includeRunning) return logs;
 
-  const now = toBdtDate(new Date());
+  // Keep the raw UTC timestamp here; splitRunningSession handles BDT conversion internally.
+  const now = new Date();
   const currentWeekStart = getCurrentWeekStart();
   const currentWeekStartDate = bdtBoundaryUtcDate(currentWeekStart, 0);
   const sessions = await db.select({
