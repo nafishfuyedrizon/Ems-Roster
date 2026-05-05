@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { setBaseUrl } from "@workspace/api-client-react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
@@ -11,8 +12,10 @@ import Dashboard from "@/pages/dashboard";
 import MemberDetail from "@/pages/member-detail";
 import AdminPanel from "@/pages/admin";
 import Handbook from "@/pages/handbook";
+import { API_ORIGIN } from "@/lib/api-base";
 
 const queryClient = new QueryClient();
+setBaseUrl(API_ORIGIN);
 
 function LegacyRedirect({ to }: { to: string }) {
   const [, setLocation] = useLocation();

@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "") + "/api";
+import { API_BASE } from "@/lib/api-base";
 
 const HC_RANKS = ["Director", "Deputy Director", "Assistant Director", "Captain", "Lieutenant", "Sergeant First Class", "Sergeant"];
 

@@ -15,8 +15,7 @@ import { Plus, Edit, Trash2, Search, X, Clock, CalendarRange, Filter } from "luc
 import { formatMinutes, WEEKS, SHIFT_LABELS } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-
-const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "") + "/api";
+import { API_BASE } from "@/lib/api-base";
 
 const SHIFT_DURATIONS: Record<string, number> = {
   Evening: 120, Night: 120, Midnight: 120, Full: 480,

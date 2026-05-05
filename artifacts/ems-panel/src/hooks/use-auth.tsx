@@ -1,8 +1,7 @@
 import { useState, useCallback } from "react";
+import { API_BASE } from "@/lib/api-base";
 
 export type AdminRole = "full" | "high-command" | "ftp-ems" | "ftb-qc" | null;
-
-const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "").replace(/^\/ems-panel/, "") + "/api";
 
 export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {

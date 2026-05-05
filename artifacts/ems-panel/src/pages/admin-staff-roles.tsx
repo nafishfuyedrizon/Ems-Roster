@@ -7,8 +7,7 @@ import { RefreshCw, Search, Shield, Lock, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EMS_RANKS } from "@/lib/format";
 import type { AdminRole } from "@/hooks/use-auth";
-
-const API = import.meta.env.BASE_URL.replace(/\/$/, "").replace(/^\/ems-panel/, "") + "/api";
+import { API_BASE as API } from "@/lib/api-base";
 
 interface StaffRoleRow {
   memberId: number;

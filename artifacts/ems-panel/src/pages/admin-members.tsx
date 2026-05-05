@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { API_BASE } from "@/lib/api-base";
 
 const memberSchema = z.object({
   callSign: z.string().min(1, "Call sign is required"),
@@ -68,7 +69,7 @@ export default function AdminMembers({ canRemove = true }: { canRemove?: boolean
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: MemberFormValues & { email: string | null; strike: string } }) => {
-      const r = await fetch(`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/members/${id}`, {
+      const r = await fetch(`${API_BASE}/members/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -83,7 +84,6 @@ export default function AdminMembers({ canRemove = true }: { canRemove?: boolean
 
   const [convertTarget, setConvertTarget] = useState<any | null>(null);
   const [convertForm, setConvertForm] = useState({ exitStatus: "RESIGNED", exitDate: "" });
-  const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "") + "/api";
 
   const convertMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: typeof convertForm }) => {

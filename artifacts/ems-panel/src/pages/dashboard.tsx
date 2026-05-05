@@ -12,8 +12,7 @@ import {
 import { formatMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useCallback } from "react";
-
-const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "").replace(/^\/ems-panel/, "") + "/api";
+import { API_BASE } from "@/lib/api-base";
 const REFRESH_INTERVAL = 1;
 
 interface ActiveSession {

@@ -11,8 +11,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { EMS_RANKS, RANK_COLORS } from "@/lib/format";
 import { useAuth } from "@/hooks/use-auth";
-
-const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "") + "/api";
+import { API_BASE } from "@/lib/api-base";
 
 const EXIT_STATUSES = ["RESIGNED", "FIRED", "REMOVED", "Terminated"];
 

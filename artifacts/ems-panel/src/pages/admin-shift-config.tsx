@@ -3,8 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Clock, Save, RotateCcw, CheckCircle2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "") + "/api";
+import { API_BASE } from "@/lib/api-base";
 
 const SHIFT_META: Record<string, { emoji: string; color: string; border: string; defaultDesc: string }> = {
   Evening:  { emoji: "🌆", color: "text-indigo-400",  border: "border-indigo-500/30",  defaultDesc: "Early evening shift" },

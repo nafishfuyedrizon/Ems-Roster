@@ -11,6 +11,7 @@ import { AlertCircle, Search, Moon, Star, Cloud, Flame, Clock, Trophy, TrendingU
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { PersonnelDossierDialog } from "@/components/personnel-dossier-dialog";
+import { API_BASE } from "@/lib/api-base";
 
 const SHIFT_TABS = [
   { key: "all", label: "All Shifts", icon: Clock, color: "text-teal-400", bg: "bg-teal-400/10 border-teal-400/30" },
@@ -85,8 +86,7 @@ export default function ShiftRoster() {
   const prevMonth = thisMonth === 1 ? 12 : thisMonth - 1;
 
   const fetchMonthlyPerformers = async (year: number, month: number, shift: ShiftKey) => {
-    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-    const r = await fetch(`${base}/api/stats/monthly-performers?year=${year}&month=${month}&shift=${shift}`);
+    const r = await fetch(`${API_BASE}/stats/monthly-performers?year=${year}&month=${month}&shift=${shift}`);
     return r.json() as Promise<{ monthLabel: string; top: { name: string; callSign: string; minutes: number }[] }>;
   };
 

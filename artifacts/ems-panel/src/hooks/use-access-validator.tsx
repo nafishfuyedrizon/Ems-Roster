@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
-
-const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "").replace(/^\/ems-panel/, "") + "/api";
+import { API_BASE } from "@/lib/api-base";
 const CHECK_INTERVAL_MS = 30_000;
 
 interface Props {
