@@ -1,5 +1,11 @@
 import pino from "pino";
 
+let isWorkerRuntime = false;
+try {
+  await import("cloudflare:workers");
+  isWorkerRuntime = true;
+} catch {}
+
 const isProduction = process.env.NODE_ENV === "production";
 
 export const logger = pino({
@@ -9,12 +15,12 @@ export const logger = pino({
     "req.headers.cookie",
     "res.headers['set-cookie']",
   ],
-  ...(isProduction
-    ? {}
-    : {
+  ...(!isWorkerRuntime && !isProduction
+    ? {
         transport: {
           target: "pino-pretty",
           options: { colorize: true },
         },
-      }),
+      }
+    : {}),
 });
