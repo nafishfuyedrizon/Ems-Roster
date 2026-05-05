@@ -7,4 +7,24 @@ const workerPort = Number(process.env["PORT"] ?? process.env["API_PORT"] ?? "300
 
 app.listen(workerPort);
 
-export default httpServerHandler({ port: workerPort });
+const workerHandler = httpServerHandler({ port: workerPort }) as {
+  fetch?: (request: Request, env: Record<string, unknown>, ctx: ExecutionContext) => Response | Promise<Response>;
+} | ((request: Request, env: Record<string, unknown>, ctx: ExecutionContext) => Response | Promise<Response>);
+
+export default {
+  async fetch(request: Request, env: Record<string, unknown>, ctx: ExecutionContext) {
+    if (!process.env.DATABASE_URL) {
+      const hyperdrive = env["HYPERDRIVE"] as { connectionString?: string } | undefined;
+      const envDatabaseUrl = env["DATABASE_URL"];
+      if (typeof hyperdrive?.connectionString === "string" && hyperdrive.connectionString.length > 0) {
+        process.env.DATABASE_URL = hyperdrive.connectionString;
+      } else if (typeof envDatabaseUrl === "string" && envDatabaseUrl.length > 0) {
+        process.env.DATABASE_URL = envDatabaseUrl;
+      }
+    }
+
+    return typeof workerHandler === "function"
+      ? workerHandler(request, env, ctx)
+      : workerHandler.fetch!(request, env, ctx);
+  },
+};
