@@ -1,21 +1,25 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-if (!process.env.DATABASE_URL) {
-  try {
-    const cf = await import("cloudflare:workers");
-    const hyperdrive = (cf.env as Record<string, unknown> | undefined)?.HYPERDRIVE as
-      | { connectionString?: string }
-      | undefined;
-    const workerDatabaseUrl = (cf.env as Record<string, string | undefined> | undefined)?.DATABASE_URL;
+export async function hydrateDatabaseEnv() {
+  if (!process.env.DATABASE_URL) {
+    try {
+      const cf = await import("cloudflare:workers");
+      const hyperdrive = (cf.env as Record<string, unknown> | undefined)?.HYPERDRIVE as
+        | { connectionString?: string }
+        | undefined;
+      const workerDatabaseUrl = (cf.env as Record<string, string | undefined> | undefined)?.DATABASE_URL;
 
-    if (hyperdrive?.connectionString) {
-      process.env.DATABASE_URL = hyperdrive.connectionString;
-    } else if (workerDatabaseUrl) {
-      process.env.DATABASE_URL = workerDatabaseUrl;
-    }
-  } catch {}
+      if (hyperdrive?.connectionString) {
+        process.env.DATABASE_URL = hyperdrive.connectionString;
+      } else if (workerDatabaseUrl) {
+        process.env.DATABASE_URL = workerDatabaseUrl;
+      }
+    } catch {}
+  }
 }
+
+await hydrateDatabaseEnv();
 
 let workerSafeImportDir: string | null = null;
 try {
