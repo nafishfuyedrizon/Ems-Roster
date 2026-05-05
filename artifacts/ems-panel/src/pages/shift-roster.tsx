@@ -86,7 +86,12 @@ export default function ShiftRoster() {
   const prevMonth = thisMonth === 1 ? 12 : thisMonth - 1;
 
   const fetchMonthlyPerformers = async (year: number, month: number, shift: ShiftKey) => {
-    const r = await fetch(`${API_BASE}/stats/monthly-performers?year=${year}&month=${month}&shift=${shift}`);
+    const r = await fetch(`${API_BASE}/stats/monthly-performers?year=${year}&month=${month}&shift=${shift}`, {
+      cache: "no-store",
+    });
+    if (!r.ok) {
+      throw new Error("Failed to load monthly performers");
+    }
     return r.json() as Promise<{ monthLabel: string; top: { name: string; callSign: string; minutes: number }[] }>;
   };
 
@@ -102,6 +107,11 @@ export default function ShiftRoster() {
   const { data: prevMonthData } = useQuery({
     queryKey: ["monthly-performers", prevYear, prevMonth, activeShift],
     queryFn: () => fetchMonthlyPerformers(prevYear, prevMonth, activeShift),
+    refetchInterval: REFRESH_INTERVAL * 1000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    staleTime: 0,
   });
 
   const filteredRoster = roster?.filter(entry =>
