@@ -22,6 +22,67 @@ import {
 
 const router: IRouter = Router();
 
+const RANK_ORDER = [
+  "Director",
+  "Deputy Director",
+  "Assistant Director",
+  "Captain",
+  "Lieutenant",
+  "Sergeant First Class",
+  "Sergeant",
+  "Senior Specialist",
+  "Specialist",
+  "Senior Paramedic",
+  "Paramedic",
+  "EMT",
+  "EMS Student",
+];
+
+function rankIndex(rank: string): number {
+  const idx = RANK_ORDER.indexOf(rank.trim());
+  return idx === -1 ? RANK_ORDER.length : idx;
+}
+
+function parseCallSign(callSign: string) {
+  const normalized = callSign.trim().toUpperCase();
+  const match = normalized.match(/^([A-Z]+)[-\s]?(\d+)$/);
+
+  if (!match) {
+    return {
+      prefix: normalized,
+      number: Number.POSITIVE_INFINITY,
+      fallback: normalized,
+    };
+  }
+
+  return {
+    prefix: match[1],
+    number: Number.parseInt(match[2], 10),
+    fallback: normalized,
+  };
+}
+
+function compareByRankAndCallSign(
+  a: { rank: string; callSign: string; name: string },
+  b: { rank: string; callSign: string; name: string }
+): number {
+  const rankDiff = rankIndex(a.rank) - rankIndex(b.rank);
+  if (rankDiff !== 0) return rankDiff;
+
+  const aCallSign = parseCallSign(a.callSign);
+  const bCallSign = parseCallSign(b.callSign);
+  const prefixDiff = aCallSign.prefix.localeCompare(bCallSign.prefix, undefined, { numeric: true });
+  if (prefixDiff !== 0) return prefixDiff;
+
+  const numberDiff = aCallSign.number - bCallSign.number;
+  if (numberDiff !== 0) return numberDiff;
+
+  const fallbackDiff = aCallSign.fallback.localeCompare(bCallSign.fallback, undefined, { numeric: true });
+  if (fallbackDiff !== 0) return fallbackDiff;
+
+  return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+}
+
 function buildWeeks(count = 5): { weekStart: string; weekLabel: string }[] {
   const now = new Date();
   const day = now.getDay();
@@ -53,6 +114,8 @@ router.get("/members", async (req, res) => {
   const members = conditions.length > 0
     ? await db.select().from(membersTable).where(and(...conditions))
     : await db.select().from(membersTable);
+
+  members.sort(compareByRankAndCallSign);
 
   res.json(members.map(m => ({
     ...m,

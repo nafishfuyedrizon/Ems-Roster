@@ -27,6 +27,46 @@ function rankIndex(rank: string): number {
   return idx === -1 ? 99 : idx;
 }
 
+function parseCallSign(callSign: string) {
+  const normalized = callSign.trim().toUpperCase();
+  const match = normalized.match(/^([A-Z]+)[-\s]?(\d+)$/);
+
+  if (!match) {
+    return {
+      prefix: normalized,
+      number: Number.POSITIVE_INFINITY,
+      fallback: normalized,
+    };
+  }
+
+  return {
+    prefix: match[1],
+    number: Number.parseInt(match[2], 10),
+    fallback: normalized,
+  };
+}
+
+function compareByRankAndCallSign(
+  a: { rank: string; callSign: string; name?: string },
+  b: { rank: string; callSign: string; name?: string }
+): number {
+  const rankDiff = rankIndex(a.rank) - rankIndex(b.rank);
+  if (rankDiff !== 0) return rankDiff;
+
+  const aCallSign = parseCallSign(a.callSign);
+  const bCallSign = parseCallSign(b.callSign);
+  const prefixDiff = aCallSign.prefix.localeCompare(bCallSign.prefix, undefined, { numeric: true });
+  if (prefixDiff !== 0) return prefixDiff;
+
+  const numberDiff = aCallSign.number - bCallSign.number;
+  if (numberDiff !== 0) return numberDiff;
+
+  const fallbackDiff = aCallSign.fallback.localeCompare(bCallSign.fallback, undefined, { numeric: true });
+  if (fallbackDiff !== 0) return fallbackDiff;
+
+  return (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" });
+}
+
 const MIN_WEEKLY_MINUTES = 18000;
 const RED_WEEKS_THRESHOLD = 3;
 
@@ -380,11 +420,7 @@ router.get("/stats/roster", async (_req, res) => {
     };
   });
 
-  roster.sort((a, b) => {
-    const rd = rankIndex(a.rank) - rankIndex(b.rank);
-    if (rd !== 0) return rd;
-    return a.callSign.localeCompare(b.callSign);
-  });
+  roster.sort(compareByRankAndCallSign);
 
   res.json(roster);
 });
@@ -475,11 +511,7 @@ router.get("/stats/shift-roster", async (_req, res) => {
     };
   });
 
-  shiftRoster.sort((a, b) => {
-    const rd = rankIndex(a.rank) - rankIndex(b.rank);
-    if (rd !== 0) return rd;
-    return a.callSign.localeCompare(b.callSign);
-  });
+  shiftRoster.sort(compareByRankAndCallSign);
 
   res.json(shiftRoster);
 });

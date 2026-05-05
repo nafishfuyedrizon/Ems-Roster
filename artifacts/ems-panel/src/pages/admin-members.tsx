@@ -13,7 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Edit, Trash2, Search, UserMinus } from "lucide-react";
-import { STATUS_COLORS, EMS_RANKS, RANK_COLORS } from "@/lib/format";
+import { STATUS_COLORS, EMS_RANKS, RANK_COLORS, compareByRankAndCallSign } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
@@ -131,13 +131,7 @@ export default function AdminMembers({ canRemove = true }: { canRemove?: boolean
     m.name.toLowerCase().includes(search.toLowerCase()) ||
     m.callSign.toLowerCase().includes(search.toLowerCase()) ||
     m.rank.toLowerCase().includes(search.toLowerCase())
-  ).sort((a, b) => {
-    const ai = EMS_RANKS.indexOf(a.rank ?? "");
-    const bi = EMS_RANKS.indexOf(b.rank ?? "");
-    const ar = ai === -1 ? EMS_RANKS.length : ai;
-    const br = bi === -1 ? EMS_RANKS.length : bi;
-    return ar !== br ? ar - br : a.name.localeCompare(b.name);
-  });
+  ).sort(compareByRankAndCallSign);
 
   const handleOpenEdit = (member: any) => {
     setEditingId(member.id);

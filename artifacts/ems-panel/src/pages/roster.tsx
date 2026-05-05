@@ -1,5 +1,5 @@
 import { useGetRosterWithWeeklyDuty, getGetRosterWithWeeklyDutyQueryKey } from "@workspace/api-client-react";
-import { formatMinutes, WEEKS, STATUS_COLORS, MIN_WEEKLY_MINUTES, RED_WEEKS_THRESHOLD, isWeekEligible, isCompletedWeek } from "@/lib/format";
+import { formatMinutes, WEEKS, STATUS_COLORS, MIN_WEEKLY_MINUTES, RED_WEEKS_THRESHOLD, isWeekEligible, isCompletedWeek, compareByRankAndCallSign } from "@/lib/format";
 import { Layout } from "@/components/layout";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -28,10 +28,12 @@ export default function Roster() {
   const [search, setSearch] = useState("");
   const [dossierMemberId, setDossierMemberId] = useState<number | null>(null);
 
-  const filteredRoster = roster?.filter(entry =>
-    entry.name.toLowerCase().includes(search.toLowerCase()) ||
-    entry.callSign.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredRoster = roster
+    ?.filter(entry =>
+      entry.name.toLowerCase().includes(search.toLowerCase()) ||
+      entry.callSign.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort(compareByRankAndCallSign);
 
   return (
     <Layout>

@@ -71,6 +71,54 @@ export const EMS_RANKS = [
   "EMS Student",
 ];
 
+type RankAndCallSignSortable = {
+  rank?: string | null;
+  callSign?: string | null;
+  name?: string | null;
+};
+
+function getRankOrder(rank: string | null | undefined): number {
+  const rankIndex = EMS_RANKS.indexOf(rank ?? "");
+  return rankIndex === -1 ? EMS_RANKS.length : rankIndex;
+}
+
+function parseCallSign(callSign: string | null | undefined) {
+  const normalized = (callSign ?? "").trim().toUpperCase();
+  const match = normalized.match(/^([A-Z]+)[-\s]?(\d+)$/);
+
+  if (!match) {
+    return {
+      prefix: normalized,
+      number: Number.POSITIVE_INFINITY,
+      fallback: normalized,
+    };
+  }
+
+  return {
+    prefix: match[1],
+    number: Number.parseInt(match[2], 10),
+    fallback: normalized,
+  };
+}
+
+export function compareByRankAndCallSign<T extends RankAndCallSignSortable>(a: T, b: T): number {
+  const rankDiff = getRankOrder(a.rank) - getRankOrder(b.rank);
+  if (rankDiff !== 0) return rankDiff;
+
+  const aCallSign = parseCallSign(a.callSign);
+  const bCallSign = parseCallSign(b.callSign);
+  const prefixDiff = aCallSign.prefix.localeCompare(bCallSign.prefix, undefined, { numeric: true });
+  if (prefixDiff !== 0) return prefixDiff;
+
+  const numberDiff = aCallSign.number - bCallSign.number;
+  if (numberDiff !== 0) return numberDiff;
+
+  const fallbackDiff = aCallSign.fallback.localeCompare(bCallSign.fallback, undefined, { numeric: true });
+  if (fallbackDiff !== 0) return fallbackDiff;
+
+  return (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" });
+}
+
 export const SHIFT_LABELS: Record<string, string> = {
   Evening: "Evening Shift 🌙",
   Night: "Night Shift ⭐",
