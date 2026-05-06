@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useListMembers, getListMembersQueryKey } from "@workspace/api-client-react";
 import { useGetDashboardStats, getGetDashboardStatsQueryKey } from "@workspace/api-client-react";
-import { EMS_RANKS, STATUS_COLORS, RANK_COLORS } from "@/lib/format";
+import { EMS_RANKS, STATUS_COLORS, RANK_COLORS, compareByRankAndCallSign } from "@/lib/format";
 import { Layout } from "@/components/layout";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -193,7 +193,8 @@ export default function EmsRoster() {
                   <>
                     {/* Rank sections: header immediately followed by members of that rank */}
                     {EMS_RANKS.flatMap(rankName => {
-                      const rankMembers = filteredMembers?.filter(m => normalizeRank(m.rank) === rankName) ?? [];
+                      const rankMembers = (filteredMembers?.filter(m => normalizeRank(m.rank) === rankName) ?? [])
+                        .sort(compareByRankAndCallSign);
                       if (rankMembers.length === 0) return [];
 
                       return [
@@ -245,7 +246,9 @@ export default function EmsRoster() {
                       if (otherMembers.length === 0) return null;
                       const distinctRanks = [...new Set(otherMembers.map(m => m.rank))];
                       return distinctRanks.flatMap(rankName => {
-                        const rankMembers = otherMembers.filter(m => m.rank === rankName);
+                        const rankMembers = otherMembers
+                          .filter(m => m.rank === rankName)
+                          .sort(compareByRankAndCallSign);
                         return [
                           <TableRow key={`other-header-${rankName}`} className="border-border/50">
                             <TableCell colSpan={13} className="bg-muted/30 py-1.5 px-4">
