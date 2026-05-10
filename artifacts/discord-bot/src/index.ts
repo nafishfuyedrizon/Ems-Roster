@@ -1,15 +1,34 @@
 import "@workspace/db/load-env";
 import { Client, GatewayIntentBits, Message, TextChannel, Events } from "discord.js";
-import { db, membersTable, dutyLogsTable, activeDutySessionsTable, shiftConfigTable } from "@workspace/db";
+import {
+  db,
+  membersTable,
+  dutyLogsTable,
+  activeDutySessionsTable,
+  shiftConfigTable,
+  patientsTable,
+  doctorAppointmentsTable,
+  doctorAppointmentEventsTable,
+  medicalRecordsTable,
+  medicalRecordAttachmentsTable,
+  mfcCasesTable,
+  prescriptionsTable,
+  prescriptionAttachmentsTable,
+} from "@workspace/db";
 import { eq, and, gte, inArray } from "drizzle-orm";
 
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const CHANNEL_ID = process.env.DISCORD_TIMESTAMP_CHANNEL_ID;
+const DOCTOR_APPOINTMENT_CHANNEL_ID = process.env.DISCORD_DOCTOR_APPOINTMENT_CHANNEL_ID;
+const MEDICAL_RECORD_HISTORY_CHANNEL_ID = process.env.DISCORD_MEDICAL_RECORD_HISTORY_CHANNEL_ID;
+const MFC_DUMP_CHANNEL_ID = process.env.DISCORD_MFC_DUMP_CHANNEL_ID;
+const PRESCRIPTION_HISTORY_CHANNEL_ID = process.env.DISCORD_PRESCRIPTION_HISTORY_CHANNEL_ID;
 const CURRENT_SCAN_LIMIT = 1000;
 const BACKFILL_MONTHS = Number(process.env.BACKFILL_MONTHS ?? 3);
 const REBUILD_BACKFILL = process.env.REBUILD_BACKFILL === "1";
 const BACKFILL_PAGE_DELAY_MS = Number(process.env.BACKFILL_PAGE_DELAY_MS ?? 25);
 const BACKFILL_OVERLAP_DAYS = Number(process.env.BACKFILL_OVERLAP_DAYS ?? 3);
+const MEDICAL_IMPORT_DAYS = Number(process.env.MEDICAL_IMPORT_DAYS ?? 7);
 
 if (!BOT_TOKEN || !CHANNEL_ID) {
   console.error("[BOT] Missing DISCORD_BOT_TOKEN or DISCORD_TIMESTAMP_CHANNEL_ID");
@@ -180,6 +199,304 @@ function extractText(message: Message): string {
     for (const field of embed.fields) parts.push(field.name + " " + field.value);
   }
   return parts.join("\n");
+}
+
+function extractAttachmentUrl(message: Message): string | null {
+  return message.attachments.first()?.url ?? null;
+}
+
+function extractLineValue(text: string, labels: string[]): string | null {
+  for (const label of labels) {
+    const regex = new RegExp(`${label}\\s*:\\s*(.+)`, "i");
+    const match = text.match(regex);
+    if (match?.[1]) return match[1].trim();
+  }
+  return null;
+}
+
+async function resolveOrCreatePatient(input: {
+  cid?: string | null;
+  name: string;
+  phone?: string | null;
+  sex?: string | null;
+  dateOfBirth?: string | null;
+  weight?: string | null;
+}) {
+  const cid = (input.cid ?? "").trim();
+  if (!cid) return null;
+
+  const [existing] = await db.select().from(patientsTable).where(eq(patientsTable.cid, cid)).limit(1);
+  if (existing) {
+    await db.update(patientsTable).set({
+      name: input.name || existing.name,
+      phone: input.phone ?? existing.phone,
+      sex: input.sex ?? existing.sex,
+      dateOfBirth: input.dateOfBirth ?? existing.dateOfBirth,
+      weight: input.weight ?? existing.weight,
+      updatedAt: new Date(),
+    }).where(eq(patientsTable.id, existing.id));
+    return existing.id;
+  }
+
+  const [inserted] = await db.insert(patientsTable).values({
+    cid,
+    name: input.name || "Unknown",
+    phone: input.phone ?? null,
+    sex: input.sex ?? null,
+    dateOfBirth: input.dateOfBirth ?? null,
+    weight: input.weight ?? null,
+  }).$returningId();
+  return inserted.id;
+}
+
+function medicalCutoffDate() {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() - MEDICAL_IMPORT_DAYS);
+  return date;
+}
+
+async function syncDoctorAppointmentMessage(message: Message) {
+  const firstEmbed = message.embeds[0];
+  if (!firstEmbed) return;
+  const sourceName = firstEmbed.author?.name ?? message.member?.displayName ?? message.author.username;
+  const title = firstEmbed.title ?? "";
+  if (!/EMS Appointment/i.test(title) || !/EMS Reception/i.test(sourceName)) return;
+
+  const text = extractText(message);
+  const patientName = extractLineValue(text, ["Name"]) ?? "Unknown";
+  const cid = extractLineValue(text, ["CID"]);
+  const contact = extractLineValue(text, ["Contact", "Phone Number"]);
+  const gender = extractLineValue(text, ["Gender", "Sex"]);
+  const dateOfBirth = extractLineValue(text, ["Date of Birth", "D.O.B", "DOB"]);
+  const appointmentRawText = extractLineValue(text, ["Appointment"]);
+  const appointmentNumber = title.match(/#(\d+)/)?.[1] ?? null;
+  const patientId = await resolveOrCreatePatient({ cid, name: patientName, phone: contact, sex: gender, dateOfBirth });
+
+  await db.insert(doctorAppointmentsTable).values({
+    patientId,
+    discordMessageId: message.id,
+    discordChannelId: message.channelId,
+    sourceAuthorName: sourceName,
+    appointmentNumber,
+    patientName,
+    cid,
+    contact,
+    gender,
+    dateOfBirth,
+    appointmentRawText,
+    appointmentTypeLabel: appointmentRawText,
+    scheduledAtText: message.createdAt.toISOString(),
+    postedAt: message.createdAt,
+    lastSyncedAt: new Date(),
+  }).onDuplicateKeyUpdate({
+    set: {
+      patientId,
+      patientName,
+      cid,
+      contact,
+      gender,
+      dateOfBirth,
+      appointmentRawText,
+      appointmentTypeLabel: appointmentRawText,
+      sourceAuthorName: sourceName,
+      scheduledAtText: message.createdAt.toISOString(),
+      sourceDeletedAt: null,
+      lastSyncedAt: new Date(),
+      updatedAt: new Date(),
+    },
+  });
+
+  const [saved] = await db.select({ id: doctorAppointmentsTable.id }).from(doctorAppointmentsTable).where(eq(doctorAppointmentsTable.discordMessageId, message.id)).limit(1);
+  if (saved) {
+    await db.insert(doctorAppointmentEventsTable).values({
+      appointmentId: saved.id,
+      eventType: "discord_sync",
+      actorType: "bot",
+      actorLabel: "Discord Bot",
+      details: "Appointment synced from Discord channel",
+    });
+  }
+}
+
+async function syncMedicalRecordHistoryMessage(message: Message) {
+  const text = extractText(message);
+  if (!/Name\s*:|CID\s*:|Treatment/i.test(text)) return;
+  const patientName = extractLineValue(text, ["Name"]) ?? "Unknown";
+  const cid = extractLineValue(text, ["CID"]);
+  const phone = extractLineValue(text, ["Phone Number", "Phone"]);
+  const injuryDetails = extractLineValue(text, ["Details of injury", "Injury Details"]);
+  const treatmentDetails = extractLineValue(text, ["Treatment Details", "Treatment"]);
+  const recordDateText = extractLineValue(text, ["Date"]) ?? message.createdAt.toISOString();
+  const doneByText = extractLineValue(text, ["Done By"]) ?? message.member?.displayName ?? message.author.username;
+  const patientId = await resolveOrCreatePatient({ cid, name: patientName, phone });
+
+  await db.insert(medicalRecordsTable).values({
+    patientId,
+    discordMessageId: message.id,
+    discordChannelId: message.channelId,
+    sourceAuthorName: message.member?.displayName ?? message.author.username,
+    patientName,
+    cid,
+    phone,
+    injuryDetails,
+    treatmentDetails,
+    recordDateText,
+    doneByText,
+    postedAt: message.createdAt,
+  }).onDuplicateKeyUpdate({
+    set: {
+      patientId,
+      patientName,
+      cid,
+      phone,
+      injuryDetails,
+      treatmentDetails,
+      recordDateText,
+      doneByText,
+      sourceDeletedAt: null,
+      updatedAt: new Date(),
+    },
+  });
+
+  const [saved] = await db.select({ id: medicalRecordsTable.id }).from(medicalRecordsTable).where(eq(medicalRecordsTable.discordMessageId, message.id)).limit(1);
+  if (saved) {
+    await db.delete(medicalRecordAttachmentsTable).where(eq(medicalRecordAttachmentsTable.medicalRecordId, saved.id));
+    const attachments = [...message.attachments.values()];
+    if (attachments.length > 0) {
+      await db.insert(medicalRecordAttachmentsTable).values(attachments.map((attachment) => ({
+        medicalRecordId: saved.id,
+        attachmentType: "image",
+        fileName: attachment.name,
+        sourceUrl: attachment.url,
+      })));
+    }
+  }
+}
+
+async function syncMfcDumpMessage(message: Message) {
+  const text = extractText(message);
+  const patientName = extractLineValue(text, ["Name"]) ?? message.content.match(/Name[:\s]+(.+)/i)?.[1]?.trim() ?? "Unknown";
+  const cid = extractLineValue(text, ["CID"]);
+  if (!cid && !extractAttachmentUrl(message)) return;
+  const patientId = await resolveOrCreatePatient({ cid, name: patientName });
+
+  await db.insert(mfcCasesTable).values({
+    patientId,
+    discordMessageId: message.id,
+    discordChannelId: message.channelId,
+    sourceAuthorName: message.member?.displayName ?? message.author.username,
+    applicantName: patientName,
+    cid,
+    examDateText: message.createdAt.toISOString().slice(0, 10),
+    officerName: message.member?.displayName ?? message.author.username,
+    officerSignature: message.member?.displayName ?? message.author.username,
+    sourceAttachmentUrl: extractAttachmentUrl(message),
+    importedFromArchive: true,
+    postedAt: message.createdAt,
+    status: "completed",
+    completedAt: message.createdAt,
+  }).onDuplicateKeyUpdate({
+    set: {
+      patientId,
+      applicantName: patientName,
+      cid,
+      sourceAttachmentUrl: extractAttachmentUrl(message),
+      sourceDeletedAt: null,
+      updatedAt: new Date(),
+    },
+  });
+}
+
+async function syncPrescriptionHistoryMessage(message: Message) {
+  const text = extractText(message);
+  const patientName = extractLineValue(text, ["Patient Name", "Name"]) ?? "Unknown";
+  const cid = extractLineValue(text, ["CID"]);
+  if (!cid && !extractAttachmentUrl(message)) return;
+  const age = extractLineValue(text, ["Age"]);
+  const sex = extractLineValue(text, ["Sex"]);
+  const weight = extractLineValue(text, ["Weight"]);
+  const patientId = await resolveOrCreatePatient({ cid, name: patientName, sex, weight });
+
+  await db.insert(prescriptionsTable).values({
+    patientId,
+    discordMessageId: message.id,
+    discordChannelId: message.channelId,
+    sourceAuthorName: message.member?.displayName ?? message.author.username,
+    patientName,
+    cid,
+    age,
+    sex,
+    weight,
+    prescriptionDateText: message.createdAt.toISOString().slice(0, 10),
+    doctorName: message.member?.displayName ?? message.author.username,
+    signatureText: message.member?.displayName ?? message.author.username,
+    sourceAttachmentUrl: extractAttachmentUrl(message),
+    importedFromArchive: true,
+    postedAt: message.createdAt,
+    status: "completed",
+    completedAt: message.createdAt,
+  }).onDuplicateKeyUpdate({
+    set: {
+      patientId,
+      patientName,
+      cid,
+      age,
+      sex,
+      weight,
+      sourceAttachmentUrl: extractAttachmentUrl(message),
+      sourceDeletedAt: null,
+      updatedAt: new Date(),
+    },
+  });
+
+  const [saved] = await db.select({ id: prescriptionsTable.id }).from(prescriptionsTable).where(eq(prescriptionsTable.discordMessageId, message.id)).limit(1);
+  if (saved && extractAttachmentUrl(message)) {
+    await db.delete(prescriptionAttachmentsTable).where(eq(prescriptionAttachmentsTable.prescriptionId, saved.id));
+    await db.insert(prescriptionAttachmentsTable).values({
+      prescriptionId: saved.id,
+      fileName: message.attachments.first()?.name ?? "prescription-image",
+      sourceUrl: extractAttachmentUrl(message)!,
+    });
+  }
+}
+
+async function syncRecentMessages(channel: TextChannel, processor: (message: Message) => Promise<void>) {
+  const after = dateToSnowflake(medicalCutoffDate());
+  let afterId = after;
+  while (true) {
+    const batch = await channel.messages.fetch({ after: afterId, limit: 100 });
+    if (batch.size === 0) break;
+    const messages = [...batch.values()].sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+    for (const message of messages) {
+      await processor(message);
+    }
+    afterId = messages[messages.length - 1].id;
+    if (batch.size < 100) break;
+  }
+}
+
+async function markMedicalSourceDeleted(channelId: string, messageId: string) {
+  if (channelId === DOCTOR_APPOINTMENT_CHANNEL_ID) {
+    await db.update(doctorAppointmentsTable).set({ sourceDeletedAt: new Date(), updatedAt: new Date() }).where(eq(doctorAppointmentsTable.discordMessageId, messageId));
+  } else if (channelId === MEDICAL_RECORD_HISTORY_CHANNEL_ID) {
+    await db.update(medicalRecordsTable).set({ sourceDeletedAt: new Date(), updatedAt: new Date() }).where(eq(medicalRecordsTable.discordMessageId, messageId));
+  } else if (channelId === MFC_DUMP_CHANNEL_ID) {
+    await db.update(mfcCasesTable).set({ sourceDeletedAt: new Date(), updatedAt: new Date() }).where(eq(mfcCasesTable.discordMessageId, messageId));
+  } else if (channelId === PRESCRIPTION_HISTORY_CHANNEL_ID) {
+    await db.update(prescriptionsTable).set({ sourceDeletedAt: new Date(), updatedAt: new Date() }).where(eq(prescriptionsTable.discordMessageId, messageId));
+  }
+}
+
+async function processMedicalMessage(message: Message) {
+  if (message.channelId === DOCTOR_APPOINTMENT_CHANNEL_ID) {
+    await syncDoctorAppointmentMessage(message);
+  } else if (message.channelId === MEDICAL_RECORD_HISTORY_CHANNEL_ID) {
+    await syncMedicalRecordHistoryMessage(message);
+  } else if (message.channelId === MFC_DUMP_CHANNEL_ID) {
+    await syncMfcDumpMessage(message);
+  } else if (message.channelId === PRESCRIPTION_HISTORY_CHANNEL_ID) {
+    await syncPrescriptionHistoryMessage(message);
+  }
 }
 
 type ParseResult =
@@ -534,6 +851,21 @@ client.once(Events.ClientReady, async (c) => {
       for (const message of queued) await processMessage(message);
     }
     console.log("[BOT] ✅ Startup catch-up complete. Live tracking is active.");
+
+    const medicalChannels: Array<[string | undefined, (message: Message) => Promise<void>]> = [
+      [DOCTOR_APPOINTMENT_CHANNEL_ID, syncDoctorAppointmentMessage],
+      [MEDICAL_RECORD_HISTORY_CHANNEL_ID, syncMedicalRecordHistoryMessage],
+      [MFC_DUMP_CHANNEL_ID, syncMfcDumpMessage],
+      [PRESCRIPTION_HISTORY_CHANNEL_ID, syncPrescriptionHistoryMessage],
+    ];
+    for (const [channelId, processor] of medicalChannels) {
+      if (!channelId) continue;
+      const channel = await c.channels.fetch(channelId);
+      if (channel && channel.isTextBased()) {
+        await syncRecentMessages(channel as TextChannel, processor);
+      }
+    }
+    console.log("[BOT] ✅ Medical workspace Discord sync complete.");
   } catch (err) {
     console.error("[BOT] Error during startup sync:", err);
     startupSyncComplete = true;
@@ -541,15 +873,41 @@ client.once(Events.ClientReady, async (c) => {
 });
 
 client.on(Events.MessageCreate, async (message) => {
-  if (message.channelId !== CHANNEL_ID) return;
   try {
-    if (!startupSyncComplete) {
-      pendingLiveMessages.push(message);
+    if (message.channelId === CHANNEL_ID) {
+      if (!startupSyncComplete) {
+        pendingLiveMessages.push(message);
+        return;
+      }
+      await processMessage(message);
       return;
     }
-    await processMessage(message);
+
+    if ([DOCTOR_APPOINTMENT_CHANNEL_ID, MEDICAL_RECORD_HISTORY_CHANNEL_ID, MFC_DUMP_CHANNEL_ID, PRESCRIPTION_HISTORY_CHANNEL_ID].includes(message.channelId)) {
+      await processMedicalMessage(message);
+    }
   } catch (err) {
     console.error("[BOT] Error processing message:", err);
+  }
+});
+
+client.on(Events.MessageUpdate, async (_oldMessage, newMessage) => {
+  try {
+    if (!newMessage || newMessage.partial) return;
+    if ([DOCTOR_APPOINTMENT_CHANNEL_ID, MEDICAL_RECORD_HISTORY_CHANNEL_ID, MFC_DUMP_CHANNEL_ID, PRESCRIPTION_HISTORY_CHANNEL_ID].includes(newMessage.channelId)) {
+      await processMedicalMessage(newMessage as Message);
+    }
+  } catch (err) {
+    console.error("[BOT] Error processing edited message:", err);
+  }
+});
+
+client.on(Events.MessageDelete, async (message) => {
+  try {
+    if (!message.channelId) return;
+    await markMedicalSourceDeleted(message.channelId, message.id);
+  } catch (err) {
+    console.error("[BOT] Error processing deleted message:", err);
   }
 });
 

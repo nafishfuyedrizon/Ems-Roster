@@ -12,6 +12,9 @@ import shiftConfigRouter from "./shift-config";
 import qualificationChartRouter from "./qualification-chart";
 import validateAccessRouter from "./validate-access";
 import exEmsRouter from "./ex-ems";
+import doctorAuthRouter from "./doctor-auth";
+import doctorAccountsRouter from "./doctor-accounts";
+import doctorWorkspaceRouter from "./doctor-workspace";
 
 const router: IRouter = Router();
 
@@ -28,5 +31,8 @@ router.use(shiftConfigRouter);
 router.use(qualificationChartRouter);
 router.use(validateAccessRouter);
 router.use(exEmsRouter);
+router.use(doctorAuthRouter);
+router.use(doctorAccountsRouter);
+router.use(doctorWorkspaceRouter);
 
 export default router;

@@ -15,6 +15,7 @@ import AdminShiftConfig from "./admin-shift-config";
 import AdminQualification from "./admin-qualification";
 import AdminExEms from "./admin-ex-ems";
 import AdminHcFtb from "./admin-hc-ftb";
+import AdminDoctorAccounts from "./admin-doctor-accounts";
 
 function DiscordIcon({ className }: { className?: string }) {
   return (
@@ -196,6 +197,11 @@ export default function AdminPanel() {
                   </TabsTrigger>
                 )}
                 {(isFull || isHighCommand) && (
+                  <TabsTrigger value="doctor-accounts" className="data-[state=active]:bg-cyan-500/10 data-[state=active]:text-cyan-300 font-mono uppercase text-xs h-9">
+                    Doctor Accounts
+                  </TabsTrigger>
+                )}
+                {(isFull || isHighCommand) && (
                   <TabsTrigger value="hc-ftb" className="data-[state=active]:bg-orange-500/10 data-[state=active]:text-orange-400 font-mono uppercase text-xs h-9">
                     Ex HC/FTB Chart
                   </TabsTrigger>
@@ -237,6 +243,11 @@ export default function AdminPanel() {
               {(isFull || isHighCommand) && (
                 <TabsContent value="ex-ems" className="mt-0 outline-none">
                   <AdminExEms />
+                </TabsContent>
+              )}
+              {(isFull || isHighCommand) && (
+                <TabsContent value="doctor-accounts" className="mt-0 outline-none">
+                  <AdminDoctorAccounts />
                 </TabsContent>
               )}
               {(isFull || isHighCommand) && (
