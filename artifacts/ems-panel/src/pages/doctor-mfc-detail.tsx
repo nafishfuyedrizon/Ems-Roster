@@ -590,6 +590,7 @@ export default function DoctorMfcDetail() {
       eyeResult: data.eyeResult || "ALL GOOD",
       finalSummary: data.finalSummary || DEFAULT_DESCRIPTION,
       status: data.status ?? "draft",
+      discordMessageId: data.discordMessageId ?? "",
     });
   }, [data, doctor]);
 
@@ -693,6 +694,7 @@ export default function DoctorMfcDetail() {
   };
 
   const isCompleted = valueOf(draft, "status") === "completed";
+  const needsDiscordPost = isCompleted && !valueOf(draft, "discordMessageId").trim();
 
   const downloadDocxPreviewPage = async (page: 1 | 2) => {
     const host = document.createElement("div");
@@ -763,7 +765,17 @@ export default function DoctorMfcDetail() {
               <div className="text-[11px] text-muted-foreground">You can use either an image link or upload a photo file.</div>
             </div>
             {isCompleted ? (
-              <div className="flex items-center justify-end">
+              <div className="flex items-center justify-end gap-3">
+                {needsDiscordPost ? (
+                  <Button
+                    type="button"
+                    onClick={() => void complete()}
+                    disabled={isCompleting}
+                    className="border-amber-300/70 bg-amber-400/15 text-amber-100 hover:bg-amber-400/25"
+                  >
+                    {isCompleting ? "Posting..." : "Post to Discord"}
+                  </Button>
+                ) : null}
                 <div className="group relative flex h-11 min-w-[160px] items-center justify-center overflow-hidden rounded-md border border-emerald-300/70 bg-[linear-gradient(180deg,#67f3cd_0%,#28cfa8_46%,#129579_100%)] px-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-950 shadow-[0_10px_24px_rgba(16,185,129,0.32),0_4px_0_#0a6c59]">
                   <span className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.55),transparent_52%)] opacity-90" />
                   <span className="absolute inset-x-3 bottom-0 h-[2px] rounded-full bg-black/25 blur-[1px]" />

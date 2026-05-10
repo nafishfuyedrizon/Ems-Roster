@@ -881,27 +881,46 @@ router.post("/mfc-cases/:id/complete", requireDoctorAuth, async (req, res) => {
   if (!existing) return res.status(404).json({ error: "MFC case not found." });
 
   const completedAt = new Date();
-  await db.update(mfcCasesTable).set({ status: "completed", completedAt, updatedAt: completedAt }).where(eq(mfcCasesTable.id, id));
+  let posted:
+    | {
+        discordMessageId: string | null;
+        discordChannelId: string;
+      }
+    | null = null;
 
-  const [completed] = await db.select().from(mfcCasesTable).where(eq(mfcCasesTable.id, id)).limit(1);
-  if (!completed) return res.status(404).json({ error: "MFC case not found after completion." });
+  if (!existing.discordMessageId) {
+    const previewRow = {
+      ...existing,
+      status: "completed",
+      completedAt,
+      updatedAt: completedAt,
+      sourceAuthorName: session.name,
+    } satisfies typeof mfcCasesTable.$inferSelect;
 
-  if (!completed.discordMessageId) {
     try {
-      const posted = await postCompletedMfcToDiscord(completed, session);
-      if (posted?.discordMessageId) {
-        await db.update(mfcCasesTable).set({
+      posted = await postCompletedMfcToDiscord(previewRow, session);
+    } catch (discordError) {
+      console.warn("[DOCTOR-MFC] Discord post failed during complete.", discordError);
+      const message = discordError instanceof Error && discordError.message.trim()
+        ? discordError.message.trim()
+        : "Discord post failed during MFC completion.";
+      return res.status(502).json({ error: message });
+    }
+  }
+
+  await db.update(mfcCasesTable).set({
+    status: "completed",
+    completedAt,
+    updatedAt: completedAt,
+    ...(posted?.discordMessageId
+      ? {
           discordMessageId: posted.discordMessageId,
           discordChannelId: posted.discordChannelId,
           sourceAuthorName: session.name,
           postedAt: completedAt,
-          updatedAt: new Date(),
-        }).where(eq(mfcCasesTable.id, id));
-      }
-    } catch (discordError) {
-      console.warn("[DOCTOR-MFC] Discord post failed during complete; continuing.", discordError);
-    }
-  }
+        }
+      : {}),
+  }).where(eq(mfcCasesTable.id, id));
 
   try {
     await createMfcEvent(id, "completed", "doctor", session.callSign, "MFC case completed");
