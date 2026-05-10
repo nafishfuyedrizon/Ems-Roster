@@ -54,15 +54,36 @@ export async function resolveOrCreatePatient(input: {
 }
 
 export async function createAppointmentEvent(appointmentId: number, eventType: string, actorType: string, actorLabel: string, details?: string) {
-  await db.insert(doctorAppointmentEventsTable).values({ appointmentId, eventType, actorType, actorLabel, details: details ?? null });
+  try {
+    await db.insert(doctorAppointmentEventsTable).values({ appointmentId, eventType, actorType, actorLabel, details: details ?? null });
+  } catch (error) {
+    if (isIgnorableMedicalAuditError(error)) {
+      return;
+    }
+    throw error;
+  }
 }
 
 export async function createMfcEvent(mfcCaseId: number, eventType: string, actorType: string, actorLabel: string, details?: string) {
-  await db.insert(mfcCaseEventsTable).values({ mfcCaseId, eventType, actorType, actorLabel, details: details ?? null });
+  try {
+    await db.insert(mfcCaseEventsTable).values({ mfcCaseId, eventType, actorType, actorLabel, details: details ?? null });
+  } catch (error) {
+    if (isIgnorableMedicalAuditError(error)) {
+      return;
+    }
+    throw error;
+  }
 }
 
 export async function createPrescriptionEvent(prescriptionId: number, eventType: string, actorType: string, actorLabel: string, details?: string) {
-  await db.insert(prescriptionEventsTable).values({ prescriptionId, eventType, actorType, actorLabel, details: details ?? null });
+  try {
+    await db.insert(prescriptionEventsTable).values({ prescriptionId, eventType, actorType, actorLabel, details: details ?? null });
+  } catch (error) {
+    if (isIgnorableMedicalAuditError(error)) {
+      return;
+    }
+    throw error;
+  }
 }
 
 export function buildAbsoluteUrl(req: import("express").Request, path: string): string {
@@ -81,4 +102,18 @@ export async function getNextPrintVersionNumber(documentType: string, documentId
     .from(documentPrintVersionsTable)
     .where(and(eq(documentPrintVersionsTable.documentType, documentType), eq(documentPrintVersionsTable.documentId, documentId)));
   return (row?.value ?? 0) + 1;
+}
+
+function isIgnorableMedicalAuditError(error: unknown) {
+  const code = typeof error === "object" && error !== null ? (error as { code?: string }).code : undefined;
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (code === "ER_NO_SUCH_TABLE") {
+    console.warn("[medical-audit] Audit table missing; continuing without event log.");
+    return true;
+  }
+  if (/doesn't exist/i.test(message)) {
+    console.warn("[medical-audit] Audit table missing; continuing without event log.");
+    return true;
+  }
+  return false;
 }
