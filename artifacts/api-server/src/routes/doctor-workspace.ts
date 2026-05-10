@@ -377,27 +377,52 @@ async function loadDocumentPayload(documentType: string, documentId: number) {
   return null;
 }
 
+function isMissingPrintVersionTableError(error: unknown) {
+  const code = typeof error === "object" && error !== null ? (error as { code?: string }).code : undefined;
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return code === "ER_NO_SUCH_TABLE" || /document_print_versions|doesn't exist/i.test(message);
+}
+
+function buildDocumentImageUrl(req: import("express").Request, documentType: string, documentId: number) {
+  return buildAbsoluteUrl(req, `/api/documents/${documentType}/${documentId}/image.svg`);
+}
+
 async function createPrintVersion(req: import("express").Request, documentType: string, documentId: number) {
   const session = doctorActor(req);
   const document = await loadDocumentPayload(documentType, documentId);
   if (!document) return null;
 
-  const versionNumber = await getNextPrintVersionNumber(documentType, documentId);
-  const sourceHash = computeSourceHash(document.row as Record<string, unknown>);
-  const [inserted] = await db.insert(documentPrintVersionsTable).values({
-    documentType,
-    documentId,
-    versionNumber,
-    renderFormat: "svg",
-    sourceHash,
-    metadataJson: JSON.stringify({ externalImageUrl: req.body?.externalImageUrl ?? null }),
-    externalImageUrl: typeof req.body?.externalImageUrl === "string" ? req.body.externalImageUrl : null,
-    createdBy: session.callSign,
-  }).$returningId();
+  try {
+    const versionNumber = await getNextPrintVersionNumber(documentType, documentId);
+    const sourceHash = computeSourceHash(document.row as Record<string, unknown>);
+    const [inserted] = await db.insert(documentPrintVersionsTable).values({
+      documentType,
+      documentId,
+      versionNumber,
+      renderFormat: "svg",
+      sourceHash,
+      metadataJson: JSON.stringify({ externalImageUrl: req.body?.externalImageUrl ?? null }),
+      externalImageUrl: typeof req.body?.externalImageUrl === "string" ? req.body.externalImageUrl : null,
+      createdBy: session.callSign,
+    }).$returningId();
 
-  const directUrl = buildAbsoluteUrl(req, `/api/print-versions/${inserted.id}/image.svg`);
-  await db.update(documentPrintVersionsTable).set({ directUrl }).where(eq(documentPrintVersionsTable.id, inserted.id));
-  return { id: inserted.id, directUrl, externalImageUrl: req.body?.externalImageUrl ?? null, versionNumber };
+    const directUrl = buildAbsoluteUrl(req, `/api/print-versions/${inserted.id}/image.svg`);
+    await db.update(documentPrintVersionsTable).set({ directUrl }).where(eq(documentPrintVersionsTable.id, inserted.id));
+    return { id: inserted.id, directUrl, externalImageUrl: req.body?.externalImageUrl ?? null, versionNumber, persisted: true };
+  } catch (error) {
+    if (!isMissingPrintVersionTableError(error)) {
+      throw error;
+    }
+
+    const directUrl = buildDocumentImageUrl(req, documentType, documentId);
+    return {
+      id: null,
+      directUrl,
+      externalImageUrl: req.body?.externalImageUrl ?? null,
+      versionNumber: 1,
+      persisted: false,
+    };
+  }
 }
 
 router.get("/doctor-dashboard", requireDoctorAuth, async (_req, res) => {
@@ -899,31 +924,63 @@ router.patch("/prices/:id", requireDoctorAuth, async (req, res) => {
 });
 
 router.post("/documents/:type/:id/print-version", requireDoctorAuth, async (req, res) => {
-  const documentType = String(req.params.type);
-  const documentId = Number(req.params.id);
-  const created = await createPrintVersion(req, documentType, documentId);
-  if (!created) return res.status(404).json({ error: "Printable document not found." });
-  return res.status(201).json(created);
+  try {
+    const documentType = String(req.params.type);
+    const documentId = Number(req.params.id);
+    const created = await createPrintVersion(req, documentType, documentId);
+    if (!created) return res.status(404).json({ error: "Printable document not found." });
+    return res.status(201).json(created);
+  } catch (error) {
+    const message = error instanceof Error && error.message.trim()
+      ? error.message.trim()
+      : "Failed to generate print version";
+    return res.status(500).json({ error: message });
+  }
 });
 
 router.get("/documents/:type/:id/print-versions", requireDoctorAuth, async (req, res) => {
   const documentType = String(req.params.type);
   const documentId = Number(req.params.id);
-  const rows = await db
-    .select()
-    .from(documentPrintVersionsTable)
-    .where(and(eq(documentPrintVersionsTable.documentType, documentType), eq(documentPrintVersionsTable.documentId, documentId)))
-    .orderBy(desc(documentPrintVersionsTable.versionNumber));
-  return res.json(rows.map((row) => ({ ...row, createdAt: row.createdAt.toISOString() })));
+  try {
+    const rows = await db
+      .select()
+      .from(documentPrintVersionsTable)
+      .where(and(eq(documentPrintVersionsTable.documentType, documentType), eq(documentPrintVersionsTable.documentId, documentId)))
+      .orderBy(desc(documentPrintVersionsTable.versionNumber));
+    return res.json(rows.map((row) => ({ ...row, createdAt: row.createdAt.toISOString() })));
+  } catch (error) {
+    if (isMissingPrintVersionTableError(error)) {
+      return res.json([]);
+    }
+    throw error;
+  }
 });
 
 router.post("/print-versions/:id/regenerate", requireDoctorAuth, async (req, res) => {
-  const versionId = Number(req.params.id);
-  const [existing] = await db.select().from(documentPrintVersionsTable).where(eq(documentPrintVersionsTable.id, versionId)).limit(1);
-  if (!existing) return res.status(404).json({ error: "Print version not found." });
-  const created = await createPrintVersion(req, existing.documentType, existing.documentId);
-  if (!created) return res.status(404).json({ error: "Printable document not found." });
-  return res.status(201).json(created);
+  try {
+    const versionId = Number(req.params.id);
+    const [existing] = await db.select().from(documentPrintVersionsTable).where(eq(documentPrintVersionsTable.id, versionId)).limit(1);
+    if (!existing) return res.status(404).json({ error: "Print version not found." });
+    const created = await createPrintVersion(req, existing.documentType, existing.documentId);
+    if (!created) return res.status(404).json({ error: "Printable document not found." });
+    return res.status(201).json(created);
+  } catch (error) {
+    const message = error instanceof Error && error.message.trim()
+      ? error.message.trim()
+      : "Failed to regenerate print version";
+    return res.status(500).json({ error: message });
+  }
+});
+
+router.get("/documents/:type/:id/image.svg", async (req, res) => {
+  const documentType = String(req.params.type);
+  const documentId = Number(req.params.id);
+  const document = await loadDocumentPayload(documentType, documentId);
+  if (!document) return res.status(404).send("Not found");
+
+  res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=300");
+  return res.send(document.svg);
 });
 
 router.get("/print-versions/:id/image.svg", async (req, res) => {

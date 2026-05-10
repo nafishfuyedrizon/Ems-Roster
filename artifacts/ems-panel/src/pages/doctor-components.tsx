@@ -25,6 +25,7 @@ export function PrintVersionsPanel({ documentType, documentId }: { documentType:
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [externalImageUrl, setExternalImageUrl] = useState("");
+  const [latestGeneratedUrl, setLatestGeneratedUrl] = useState<string | null>(null);
 
   const { data } = useQuery<any[]>({
     queryKey: ["print-versions", documentType, documentId],
@@ -33,12 +34,16 @@ export function PrintVersionsPanel({ documentType, documentId }: { documentType:
 
   const generateVersion = async () => {
     try {
-      const response = await doctorFetch<{ directUrl: string }>(`/documents/${documentType}/${documentId}/print-version`, {
+      const response = await doctorFetch<{ directUrl: string; persisted?: boolean }>(`/documents/${documentType}/${documentId}/print-version`, {
         method: "POST",
         body: JSON.stringify({ externalImageUrl: externalImageUrl || null }),
       });
+      setLatestGeneratedUrl(response.directUrl);
       await queryClient.invalidateQueries({ queryKey: ["print-versions", documentType, documentId] });
-      toast({ title: "Print version generated", description: response.directUrl });
+      toast({
+        title: response.persisted === false ? "Direct print link generated" : "Print version generated",
+        description: response.directUrl,
+      });
     } catch (error) {
       toast({ title: "Failed to generate print version", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
     }
@@ -57,6 +62,14 @@ export function PrintVersionsPanel({ documentType, documentId }: { documentType:
         <Button onClick={() => void generateVersion()} className="font-mono uppercase tracking-widest">
           Generate Print Version
         </Button>
+        {latestGeneratedUrl ? (
+          <div className="rounded-lg border border-border/40 bg-background/40 p-3">
+            <p className="text-sm font-semibold">Latest generated link</p>
+            <a href={latestGeneratedUrl} target="_blank" rel="noreferrer" className="mt-1 block break-all text-xs text-primary underline">
+              {latestGeneratedUrl}
+            </a>
+          </div>
+        ) : null}
         <div className="space-y-3">
           {(data ?? []).map((version) => (
             <div key={version.id} className="rounded-lg border border-border/40 bg-background/40 p-3">
