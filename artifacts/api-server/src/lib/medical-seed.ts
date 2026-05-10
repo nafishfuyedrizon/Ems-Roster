@@ -48,10 +48,21 @@ let seeded = false;
 export async function ensureMedicalSeeds(): Promise<void> {
   if (seeded) return;
 
-  const [prices, medicines] = await Promise.all([
-    db.select().from(priceCatalogTable),
-    db.select().from(medicineCatalogTable),
-  ]);
+  let prices: Array<unknown> = [];
+  let medicines: Array<unknown> = [];
+  try {
+    [prices, medicines] = await Promise.all([
+      db.select().from(priceCatalogTable),
+      db.select().from(medicineCatalogTable),
+    ]);
+  } catch (error) {
+    if (isMissingMedicalConfigTableError(error)) {
+      console.warn("[medical-seed] price/medicine catalog tables are missing; continuing with legacy defaults.");
+      seeded = true;
+      return;
+    }
+    throw error;
+  }
 
   if (prices.length === 0) {
     await db.insert(priceCatalogTable).values(PRICE_SEED as any);
@@ -62,4 +73,10 @@ export async function ensureMedicalSeeds(): Promise<void> {
   }
 
   seeded = true;
+}
+
+function isMissingMedicalConfigTableError(error: unknown) {
+  const code = typeof error === "object" && error !== null ? (error as { code?: string }).code : undefined;
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return code === "ER_NO_SUCH_TABLE" || /price_catalog|medicine_catalog|doesn't exist/i.test(message);
 }

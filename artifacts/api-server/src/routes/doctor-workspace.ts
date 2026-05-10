@@ -128,6 +128,28 @@ async function getMdtCharacters() {
   return rows;
 }
 
+function isMissingMedicalConfigTableError(error: unknown) {
+  const code = typeof error === "object" && error !== null ? (error as { code?: string }).code : undefined;
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return code === "ER_NO_SUCH_TABLE" || /price_catalog|medicine_catalog|doesn't exist/i.test(message);
+}
+
+async function getOptionalMfcPrice() {
+  try {
+    const [row] = await db
+      .select({ amount: priceCatalogTable.amount, requiredRank: priceCatalogTable.requiredRank })
+      .from(priceCatalogTable)
+      .where(eq(priceCatalogTable.name, "MFC"))
+      .limit(1);
+    return row ?? null;
+  } catch (error) {
+    if (isMissingMedicalConfigTableError(error)) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 async function loginToMdt() {
   if (!MDT_LOGIN_CID || !MDT_LOGIN_PASSWORD) {
     throw new Error("MDT authenticated vehicle lookup is not configured.");
@@ -614,7 +636,7 @@ router.post("/mfc-cases", requireDoctorAuth, async (req, res) => {
       weight: req.body?.weight,
     });
 
-    const [mfcPrice] = await db.select().from(priceCatalogTable).where(eq(priceCatalogTable.name, "MFC")).limit(1);
+    const mfcPrice = await getOptionalMfcPrice();
     if (mfcPrice && !rankMeetsRequirement(session.rank, mfcPrice.requiredRank)) {
       return res.status(403).json({ error: explainRankRequirement(mfcPrice.requiredRank) ?? "Insufficient medical rank" });
     }
