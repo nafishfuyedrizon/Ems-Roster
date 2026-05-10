@@ -32,7 +32,7 @@ const DEFAULT_DESCRIPTION =
 
 type MfcDraft = Record<string, string>;
 
-function certificateValue(draft: MfcDraft, field: string, fallback = ""): string {
+function valueOf(draft: MfcDraft, field: string, fallback = ""): string {
   return draft[field] ?? fallback;
 }
 
@@ -47,132 +47,105 @@ function CertificateMark({ className = "" }: { className?: string }) {
   );
 }
 
-function PhotoPreview({ url }: { url: string }) {
+function CertificateHeader() {
+  return (
+    <div className="px-12 pt-12">
+      <div className="border-t border-slate-500 pt-3">
+        <div className="grid grid-cols-[60px_minmax(0,1fr)_60px] items-center gap-6 border-b border-slate-500 pb-3">
+          <CertificateMark className="h-12 w-12 justify-self-center" />
+          <div className="text-center">
+            <div className="font-serif text-[28px] font-bold uppercase tracking-[0.18em] text-slate-900">Mount Zonah</div>
+            <div className="mt-1 font-serif text-[18px] font-bold uppercase tracking-[0.14em] text-slate-900">Medical Fitness Certificate</div>
+          </div>
+          <CertificateMark className="h-12 w-12 justify-self-center" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Paper({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <section className="border border-slate-300 bg-[#fffdfa] shadow-[0_18px_60px_rgba(15,23,42,0.18)]">{children}</section>;
+}
+
+function InlineField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-2 text-[15px] text-slate-900">
+      <div className="font-semibold">{label}:</div>
+      <Input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-8 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 text-[15px] font-medium text-slate-900 shadow-none focus-visible:ring-0"
+      />
+    </div>
+  );
+}
+
+function PhotoBox({ url }: { url: string }) {
   if (url.trim()) {
     return (
-      <div className="overflow-hidden rounded-[22px] border border-slate-300 bg-white shadow-sm">
-        <img src={url} alt="Applicant preview" className="h-[230px] w-full object-cover" />
+      <div className="h-[240px] w-[180px] overflow-hidden border border-slate-400 bg-white shadow-sm">
+        <img src={url} alt="Applicant" className="h-full w-full object-cover" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-[230px] items-center justify-center rounded-[22px] border border-dashed border-slate-300 bg-slate-50">
-      <div className="flex flex-col items-center gap-3 text-slate-500">
-        <svg viewBox="0 0 64 64" className="h-20 w-20" aria-hidden="true">
-          <circle cx="32" cy="32" r="24" fill="none" stroke="currentColor" strokeWidth="3" />
-          <path d="M20 42V24h24v18H20Zm2-2h20V26H22v14Zm3-3 5-7 4 5 3-3 5 8H25Zm15-9a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z" fill="currentColor" />
-        </svg>
-        <div className="text-sm font-medium">Applicant photo option ready</div>
-      </div>
+    <div className="flex h-[240px] w-[180px] items-center justify-center border border-slate-400 bg-white shadow-sm">
+      <svg viewBox="0 0 64 64" className="h-24 w-24 text-slate-900" aria-hidden="true">
+        <circle cx="32" cy="32" r="24" fill="none" stroke="currentColor" strokeWidth="3" />
+        <path d="M20 42V24h24v18H20Zm2-2h20V26H22v14Zm3-3 5-7 4 5 3-3 5 8H25Zm15-9a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z" fill="currentColor" />
+      </svg>
     </div>
-  );
-}
-
-function CertificateField({
-  label,
-  value,
-  onChange,
-  className = "",
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  className?: string;
-}) {
-  return (
-    <label className={`grid gap-2 ${className}`}>
-      <span className="text-[11px] font-semibold uppercase tracking-[0.34em] text-slate-500">{label}</span>
-      <Input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-11 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 text-[15px] font-medium text-slate-800 shadow-none focus-visible:ring-0"
-      />
-    </label>
-  );
-}
-
-function CertificateTextarea({
-  label,
-  value,
-  onChange,
-  rows = 4,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  rows?: number;
-}) {
-  return (
-    <label className="grid gap-2">
-      <span className="text-[11px] font-semibold uppercase tracking-[0.34em] text-slate-500">{label}</span>
-      <Textarea
-        value={value}
-        rows={rows}
-        onChange={(event) => onChange(event.target.value)}
-        className="min-h-0 resize-y rounded-none border-slate-300 bg-transparent text-[14px] leading-7 text-slate-800 focus-visible:ring-0"
-      />
-    </label>
   );
 }
 
 function ReportRow({
   title,
-  body,
+  value,
   result,
-  onBodyChange,
+  rows,
+  onValueChange,
   onResultChange,
 }: {
   title: string;
-  body: string;
+  value: string;
   result: string;
-  onBodyChange: (value: string) => void;
+  rows: number;
+  onValueChange: (value: string) => void;
   onResultChange: (value: string) => void;
 }) {
   return (
-    <div className="grid border-b border-slate-300 md:grid-cols-[minmax(0,1fr)_180px]">
-      <div className="border-b border-slate-300 p-4 md:border-b-0 md:border-r">
-        <div className="mb-2 text-sm font-semibold text-slate-800">{title}</div>
+    <div className="grid border-b border-slate-500 last:border-b-0 md:grid-cols-[minmax(0,1fr)_116px]">
+      <div className="border-b border-slate-500 p-2 md:border-b-0 md:border-r">
+        <div className="mb-1 text-[15px] font-bold text-slate-900">{title}</div>
         <Textarea
-          value={body}
-          rows={title === "MRI Test:" ? 8 : 4}
-          onChange={(event) => onBodyChange(event.target.value)}
-          className="min-h-0 resize-y rounded-none border-0 bg-transparent px-0 text-[14px] leading-7 text-slate-700 shadow-none focus-visible:ring-0"
+          value={value}
+          rows={rows}
+          onChange={(event) => onValueChange(event.target.value)}
+          className="min-h-0 resize-none rounded-none border-0 bg-transparent px-0 py-0 text-[14px] leading-6 text-slate-900 shadow-none focus-visible:ring-0"
         />
       </div>
-      <div className="flex items-center justify-center p-4">
+      <div className="flex items-center justify-center p-2">
         <Input
           value={result}
           onChange={(event) => onResultChange(event.target.value)}
-          className="h-12 rounded-none border-slate-300 text-center text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700 focus-visible:ring-0"
+          className="h-9 rounded-none border border-emerald-700 bg-[#e8f5df] px-2 text-center text-[13px] font-bold uppercase text-emerald-800 focus-visible:ring-0"
         />
       </div>
     </div>
-  );
-}
-
-function PaperSection({
-  children,
-  title,
-}: {
-  children: React.ReactNode;
-  title?: string;
-}) {
-  return (
-    <section className="overflow-hidden rounded-[24px] border border-slate-300 bg-[#fffdf8] shadow-[0_24px_80px_rgba(15,23,42,0.14)]">
-      <div className="border-b border-slate-200 px-8 py-7">
-        <div className="grid items-center gap-6 md:grid-cols-[72px_minmax(0,1fr)_72px]">
-          <CertificateMark className="mx-auto h-16 w-16" />
-          <div className="text-center">
-            <div className="text-[34px] font-black uppercase tracking-[0.22em] text-slate-900">MOUNT ZONAH</div>
-            <div className="mt-2 text-[26px] font-bold uppercase tracking-[0.18em] text-slate-800">Medical Fitness Certificate</div>
-          </div>
-          <CertificateMark className="mx-auto h-16 w-16" />
-        </div>
-        {title ? <div className="mt-6 text-left text-[18px] font-semibold text-slate-900">{title}</div> : null}
-      </div>
-      <div className="p-8">{children}</div>
-    </section>
   );
 }
 
@@ -227,130 +200,145 @@ export default function DoctorMfcDetail() {
 
   return (
     <DoctorPageShell>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,920px)_340px] xl:items-start xl:justify-center">
         <div className="space-y-6">
-          <PaperSection title="Applicant Information">
-            <div className="grid gap-6">
-              <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
-                <div className="grid gap-5">
-                  <CertificateField label="Name" value={certificateValue(draft, "applicantName")} onChange={(value) => setField("applicantName", value)} />
-                  <CertificateField label="Sex" value={certificateValue(draft, "sex")} onChange={(value) => setField("sex", value)} />
-                  <CertificateField label="D.O.B" value={certificateValue(draft, "dateOfBirth")} onChange={(value) => setField("dateOfBirth", value)} />
-                  <CertificateField label="CID" value={certificateValue(draft, "cid")} onChange={(value) => setField("cid", value)} />
-                  <CertificateField label="Number" value={certificateValue(draft, "number")} onChange={(value) => setField("number", value)} />
-                  <CertificateField label="Weight" value={certificateValue(draft, "weight")} onChange={(value) => setField("weight", value)} />
-                  <CertificateField label="MFC Reason" value={certificateValue(draft, "mfcReason")} onChange={(value) => setField("mfcReason", value)} />
-                  <CertificateField label="Date" value={certificateValue(draft, "examDateText")} onChange={(value) => setField("examDateText", value)} />
+          <Paper>
+            <CertificateHeader />
+            <div className="px-12 pb-8 pt-4">
+              <div className="text-center text-[18px] font-bold text-slate-900">Applicant Information</div>
+              <div className="mt-6 grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_200px]">
+                <div className="space-y-3">
+                  <InlineField label="Name" value={valueOf(draft, "applicantName")} onChange={(value) => setField("applicantName", value)} />
+                  <InlineField label="Sex" value={valueOf(draft, "sex")} onChange={(value) => setField("sex", value)} />
+                  <InlineField label="D.O.B" value={valueOf(draft, "dateOfBirth")} onChange={(value) => setField("dateOfBirth", value)} />
+                  <InlineField label="CID" value={valueOf(draft, "cid")} onChange={(value) => setField("cid", value)} />
+                  <InlineField label="Number" value={valueOf(draft, "number")} onChange={(value) => setField("number", value)} />
+                  <InlineField label="Weight" value={valueOf(draft, "weight")} onChange={(value) => setField("weight", value)} />
+                  <InlineField label="MFC Reason" value={valueOf(draft, "mfcReason")} onChange={(value) => setField("mfcReason", value)} />
+                  <InlineField label="Date" value={valueOf(draft, "examDateText")} onChange={(value) => setField("examDateText", value)} />
                 </div>
-
-                <div className="grid gap-4">
-                  <PhotoPreview url={certificateValue(draft, "sourceAttachmentUrl")} />
+                <div className="flex justify-center md:justify-end">
+                  <PhotoBox url={valueOf(draft, "sourceAttachmentUrl")} />
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-[18px] border border-slate-300">
-                <div className="grid border-b border-slate-300 bg-slate-100 text-sm font-semibold text-slate-700 md:grid-cols-[minmax(0,1fr)_180px]">
-                  <div className="border-b border-slate-300 p-4 md:border-b-0 md:border-r">Report Title</div>
-                  <div className="p-4 text-center">Result</div>
-                </div>
-                <ReportRow
-                  title="Blood Test:"
-                  body={certificateValue(draft, "bloodTest")}
-                  result={certificateValue(draft, "bloodResult")}
-                  onBodyChange={(value) => setField("bloodTest", value)}
-                  onResultChange={(value) => setField("bloodResult", value)}
-                />
-                <ReportRow
-                  title="MRI Test:"
-                  body={certificateValue(draft, "mriTest")}
-                  result={certificateValue(draft, "mriResult")}
-                  onBodyChange={(value) => setField("mriTest", value)}
-                  onResultChange={(value) => setField("mriResult", value)}
-                />
-                <ReportRow
-                  title="Eye Test:"
-                  body={certificateValue(draft, "eyeTest")}
-                  result={certificateValue(draft, "eyeResult")}
-                  onBodyChange={(value) => setField("eyeTest", value)}
-                  onResultChange={(value) => setField("eyeResult", value)}
-                />
-              </div>
-
-              <CertificateField
-                label="Signature of Medical Officer"
-                value={certificateValue(draft, "officerSignature")}
-                onChange={(value) => setField("officerSignature", value)}
-              />
-            </div>
-          </PaperSection>
-
-          <PaperSection title="Applicant Information">
-            <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_220px]">
-              <div className="grid gap-6">
-                <div className="grid gap-5 md:grid-cols-2">
-                  <CertificateField label="Name" value={certificateValue(draft, "applicantName")} onChange={(value) => setField("applicantName", value)} />
-                  <CertificateField label="CID" value={certificateValue(draft, "cid")} onChange={(value) => setField("cid", value)} />
-                  <CertificateField label="Sex" value={certificateValue(draft, "sex")} onChange={(value) => setField("sex", value)} />
-                  <CertificateField label="D.O.B" value={certificateValue(draft, "dateOfBirth")} onChange={(value) => setField("dateOfBirth", value)} />
-                  <CertificateField label="Number" value={certificateValue(draft, "number")} onChange={(value) => setField("number", value)} />
-                  <CertificateField label="Weight" value={certificateValue(draft, "weight")} onChange={(value) => setField("weight", value)} />
-                  <CertificateField label="MFC Reason" value={certificateValue(draft, "mfcReason")} onChange={(value) => setField("mfcReason", value)} className="md:col-span-2" />
-                  <CertificateField label="Date" value={certificateValue(draft, "examDateText")} onChange={(value) => setField("examDateText", value)} className="md:col-span-2" />
-                </div>
-
-                <CertificateTextarea
-                  label="Description"
-                  rows={5}
-                  value={certificateValue(draft, "finalSummary")}
-                  onChange={(value) => setField("finalSummary", value)}
-                />
-
-                <div className="grid gap-5 md:grid-cols-2">
-                  <CertificateField label="Name of Medical Officer" value={certificateValue(draft, "officerName")} onChange={(value) => setField("officerName", value)} />
-                  <CertificateField
-                    label="Signature of Medical Officer"
-                    value={certificateValue(draft, "officerSignature")}
-                    onChange={(value) => setField("officerSignature", value)}
+              <div className="mt-8">
+                <div className="mb-2 text-[18px] font-bold text-slate-900">Test Reports:</div>
+                <div className="border border-slate-500">
+                  <div className="grid bg-slate-100 text-[15px] font-bold text-[#3b82f6] md:grid-cols-[minmax(0,1fr)_116px]">
+                    <div className="border-b border-slate-500 p-2 md:border-b-0 md:border-r">Report Title</div>
+                    <div className="p-2 text-center">Result</div>
+                  </div>
+                  <ReportRow
+                    title="Blood Test:"
+                    value={valueOf(draft, "bloodTest")}
+                    result={valueOf(draft, "bloodResult")}
+                    rows={4}
+                    onValueChange={(value) => setField("bloodTest", value)}
+                    onResultChange={(value) => setField("bloodResult", value)}
+                  />
+                  <ReportRow
+                    title="MRI Test:"
+                    value={valueOf(draft, "mriTest")}
+                    result={valueOf(draft, "mriResult")}
+                    rows={8}
+                    onValueChange={(value) => setField("mriTest", value)}
+                    onResultChange={(value) => setField("mriResult", value)}
+                  />
+                  <ReportRow
+                    title="Eye Test:"
+                    value={valueOf(draft, "eyeTest")}
+                    result={valueOf(draft, "eyeResult")}
+                    rows={4}
+                    onValueChange={(value) => setField("eyeTest", value)}
+                    onResultChange={(value) => setField("eyeResult", value)}
                   />
                 </div>
+              </div>
 
-                <div className="flex flex-wrap gap-3">
-                  <Button onClick={() => void save()}>Save Changes</Button>
-                  <Button variant="outline" onClick={() => void complete()}>Complete MFC</Button>
+              <div className="mt-6 text-[15px] text-slate-900">
+                <span className="font-bold text-[#2563eb] underline">Signature of Medical Officer:</span>{" "}
+                <Input
+                  value={valueOf(draft, "officerSignature")}
+                  onChange={(event) => setField("officerSignature", event.target.value)}
+                  className="inline-flex h-8 w-[280px] rounded-none border-0 border-b border-slate-300 bg-transparent px-0 align-middle text-[15px] font-medium text-slate-900 shadow-none focus-visible:ring-0"
+                />
+              </div>
+            </div>
+          </Paper>
+
+          <Paper>
+            <CertificateHeader />
+            <div className="px-12 pb-8 pt-4">
+              <div className="text-center text-[18px] font-bold text-slate-900">Applicant Information</div>
+              <div className="mt-6 grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_200px]">
+                <div className="space-y-3">
+                  <InlineField label="Name" value={valueOf(draft, "applicantName")} onChange={(value) => setField("applicantName", value)} />
+                  <InlineField label="Sex" value={valueOf(draft, "sex")} onChange={(value) => setField("sex", value)} />
+                  <InlineField label="D.O.B" value={valueOf(draft, "dateOfBirth")} onChange={(value) => setField("dateOfBirth", value)} />
+                  <InlineField label="CID" value={valueOf(draft, "cid")} onChange={(value) => setField("cid", value)} />
+                  <InlineField label="Number" value={valueOf(draft, "number")} onChange={(value) => setField("number", value)} />
+                  <InlineField label="Weight" value={valueOf(draft, "weight")} onChange={(value) => setField("weight", value)} />
+                  <InlineField label="MFC Reason" value={valueOf(draft, "mfcReason")} onChange={(value) => setField("mfcReason", value)} />
+                  <InlineField label="Date" value={valueOf(draft, "examDateText")} onChange={(value) => setField("examDateText", value)} />
+                </div>
+                <div className="flex justify-center md:justify-end">
+                  <PhotoBox url={valueOf(draft, "sourceAttachmentUrl")} />
                 </div>
               </div>
 
-              <div className="grid gap-4">
-                <PhotoPreview url={certificateValue(draft, "sourceAttachmentUrl")} />
-                <div className="rounded-[18px] border border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
-                  Logo marks আর photo preview এই page-er final certificate layout-এর অংশ।
+              <div className="mt-8 text-[16px] leading-8 text-slate-900">
+                <span className="font-bold">Description:</span>{" "}
+                <Textarea
+                  value={valueOf(draft, "finalSummary")}
+                  rows={5}
+                  onChange={(event) => setField("finalSummary", event.target.value)}
+                  className="mt-2 min-h-0 resize-none rounded-none border border-slate-300 bg-transparent text-[15px] leading-7 text-slate-900 shadow-none focus-visible:ring-0"
+                />
+              </div>
+
+              <div className="mt-6 space-y-3 text-[15px] text-slate-900">
+                <div>
+                  <span className="font-bold text-[#2563eb] underline">Name of Medical Officer:</span>{" "}
+                  <Input
+                    value={valueOf(draft, "officerName")}
+                    onChange={(event) => setField("officerName", event.target.value)}
+                    className="inline-flex h-8 w-[280px] rounded-none border-0 border-b border-slate-300 bg-transparent px-0 align-middle text-[15px] font-medium text-slate-900 shadow-none focus-visible:ring-0"
+                  />
+                </div>
+                <div>
+                  <span className="font-bold text-[#2563eb] underline">Signature of Medical Officer:</span>{" "}
+                  <Input
+                    value={valueOf(draft, "officerSignature")}
+                    onChange={(event) => setField("officerSignature", event.target.value)}
+                    className="inline-flex h-8 w-[280px] rounded-none border-0 border-b border-slate-300 bg-transparent px-0 align-middle text-[15px] font-medium text-slate-900 shadow-none focus-visible:ring-0"
+                  />
                 </div>
               </div>
             </div>
-          </PaperSection>
+          </Paper>
         </div>
 
-        <Card className="border-border/50 bg-card/50">
+        <Card className="border-border/50 bg-card/50 xl:sticky xl:top-24">
           <CardHeader>
-            <CardTitle>Printer Links</CardTitle>
+            <CardTitle>Controls</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid gap-4 rounded-[18px] border border-border/60 bg-background/40 p-4">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.34em] text-muted-foreground">Applicant Photo URL</div>
-                <p className="mt-2 text-xs leading-6 text-muted-foreground">
-                  Direct image link দিলে certificate-এর photo box-এ preview আর generated print version-এও ওই ছবি যাবে।
-                </p>
-              </div>
+            <div className="grid gap-3 rounded-[18px] border border-border/60 bg-background/40 p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.34em] text-muted-foreground">Applicant Photo URL</div>
               <Input
-                value={certificateValue(draft, "sourceAttachmentUrl")}
+                value={valueOf(draft, "sourceAttachmentUrl")}
                 onChange={(event) => setField("sourceAttachmentUrl", event.target.value)}
                 placeholder="https://..."
               />
-              <div className="overflow-hidden rounded-[18px] border border-border/60 bg-background">
-                <PhotoPreview url={certificateValue(draft, "sourceAttachmentUrl")} />
-              </div>
+              <div className="text-xs leading-6 text-muted-foreground">Direct image link দিলে certificate-এর photo box আর generated print version-এ ওই photo show করবে.</div>
             </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={() => void save()}>Save Changes</Button>
+              <Button variant="outline" onClick={() => void complete()}>Complete MFC</Button>
+            </div>
+
             <PrintVersionsPanel documentType="mfc" documentId={id} />
           </CardContent>
         </Card>
