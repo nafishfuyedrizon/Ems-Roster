@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
-import { toPng } from "html-to-image";
 import { DoctorPageShell, useDoctorGuard } from "@/pages/doctor-shared";
 import { doctorFetch } from "@/lib/doctor-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -106,24 +105,6 @@ async function resolveInlineImageUrl(url: string): Promise<string> {
 
   const blob = await response.blob();
   return dataUrlFromBlob(blob);
-}
-
-async function waitForImages(container: HTMLElement) {
-  const images = Array.from(container.querySelectorAll("img"));
-  await Promise.all(
-    images.map(
-      (image) =>
-        new Promise<void>((resolve) => {
-          const done = () => resolve();
-          if (image.complete && image.naturalWidth > 0) {
-            resolve();
-            return;
-          }
-          image.addEventListener("load", done, { once: true });
-          image.addEventListener("error", done, { once: true });
-        }),
-    ),
-  );
 }
 
 function CertificateMark({ className = "" }: { className?: string }) {
@@ -537,8 +518,6 @@ export default function DoctorMfcDetail() {
   const id = Number(params?.id);
   const { doctor } = useDoctorGuard();
   const { toast } = useToast();
-  const capturePage1Ref = useRef<HTMLDivElement | null>(null);
-  const capturePage2Ref = useRef<HTMLDivElement | null>(null);
   const { data } = useQuery<any>({
     queryKey: ["doctor-mfc-detail", id],
     queryFn: () => doctorFetch(`/mfc-cases/${id}`),
@@ -622,27 +601,20 @@ export default function DoctorMfcDetail() {
     await queryClient.invalidateQueries({ queryKey: ["doctor-mfc-detail", id] });
   };
 
-  const downloadPreviewPage = async (page: 1 | 2) => {
-    const target = page === 1 ? capturePage1Ref.current : capturePage2Ref.current;
-    if (!target) return;
-
+  const downloadDocxPreviewPage = async (page: 1 | 2) => {
     try {
-      await waitForImages(target);
-      const dataUrl = await toPng(target, {
-        cacheBust: true,
-        pixelRatio: 6,
-        backgroundColor: "#fffdfa",
-      });
-      const anchor = document.createElement("a");
-      anchor.href = dataUrl;
-      anchor.download = `mfc-${id}-page-${page}.png`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
+      const payload = buildDraftPayload();
+      setDraft(payload);
+      await doctorFetch(`/mfc-cases/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
+      const previewUrl = `${window.location.origin}/preview/mfc-docx/${id}?download=png&page=${page}`;
+      const previewWindow = window.open(previewUrl, "_blank", "noopener,noreferrer");
+      if (!previewWindow) {
+        window.location.href = previewUrl;
+      }
     } catch (error) {
       toast({
         title: `Failed to download page ${page}`,
-        description: error instanceof Error ? error.message : "Could not capture the preview image.",
+        description: error instanceof Error ? error.message : "Could not prepare the DOCX preview download.",
         variant: "destructive",
       });
     }
@@ -651,14 +623,6 @@ export default function DoctorMfcDetail() {
   return (
     <DoctorPageShell>
       <div className="mx-auto flex max-w-[1180px] flex-col gap-6">
-        <div className="pointer-events-none fixed left-[-20000px] top-0">
-          <div ref={capturePage1Ref} className="w-[760px] bg-[#fffdfa]">
-            <StaticMfcPageOne draft={{ ...draft, sourceAttachmentUrl: resolvedPhotoUrl || valueOf(draft, "sourceAttachmentUrl") }} />
-          </div>
-          <div ref={capturePage2Ref} className="mt-8 w-[760px] bg-[#fffdfa]">
-            <StaticMfcPageTwo draft={{ ...draft, sourceAttachmentUrl: resolvedPhotoUrl || valueOf(draft, "sourceAttachmentUrl") }} />
-          </div>
-        </div>
         <Card className="border-border/50 bg-card/50">
           <CardHeader>
             <CardTitle>MFC Editor</CardTitle>
@@ -824,8 +788,8 @@ export default function DoctorMfcDetail() {
           documentType="mfc"
           documentId={id}
           customDownloads={[
-            { label: "Download Page 1", onClick: () => downloadPreviewPage(1) },
-            { label: "Download Page 2", onClick: () => downloadPreviewPage(2) },
+            { label: "Download Page 1", onClick: () => void downloadDocxPreviewPage(1) },
+            { label: "Download Page 2", onClick: () => void downloadDocxPreviewPage(2) },
           ]}
         />
       </div>

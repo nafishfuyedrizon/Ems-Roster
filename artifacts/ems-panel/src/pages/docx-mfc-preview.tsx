@@ -179,6 +179,7 @@ export default function DocxMfcPreview() {
   const [, params] = useRoute("/preview/mfc-docx/:id");
   const id = Number(params?.id);
   const previewRef = useRef<HTMLDivElement | null>(null);
+  const autoDownloadKeyRef = useRef("");
   const [renderState, setRenderState] = useState<RenderState>("idle");
   const [pageCount, setPageCount] = useState(0);
   const [errorText, setErrorText] = useState("");
@@ -188,6 +189,14 @@ export default function DocxMfcPreview() {
     if (!Number.isFinite(id) || id <= 0) return "";
     return withApiPath(`/documents/mfc/${id}/template.docx`);
   }, [id]);
+
+  const autoDownloadRequest = useMemo(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const download = searchParams.get("download");
+    const page = Number(searchParams.get("page"));
+    if (download !== "png" || (page !== 1 && page !== 2)) return null;
+    return { page: page as 1 | 2 };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -296,6 +305,16 @@ export default function DocxMfcPreview() {
       setDownloadingPage(null);
     }
   };
+
+  useEffect(() => {
+    if (renderState !== "ready" || downloadingPage !== null || !autoDownloadRequest) return;
+    if (pageCount < autoDownloadRequest.page) return;
+
+    const requestKey = `${id}:${autoDownloadRequest.page}`;
+    if (autoDownloadKeyRef.current === requestKey) return;
+    autoDownloadKeyRef.current = requestKey;
+    void downloadPngFromRenderedPage(autoDownloadRequest.page);
+  }, [autoDownloadRequest, downloadingPage, id, pageCount, renderState]);
 
   return (
     <div className="min-h-screen bg-slate-100 px-4 py-6">
