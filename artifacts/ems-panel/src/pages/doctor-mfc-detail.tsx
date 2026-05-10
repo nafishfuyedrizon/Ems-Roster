@@ -145,11 +145,13 @@ function EditableField({
   value,
   onChange,
   placeholder,
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   return (
     <div className="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-2 text-[15px] text-slate-900">
@@ -164,7 +166,8 @@ function EditableField({
         autoCorrect="off"
         autoCapitalize="none"
         autoComplete="off"
-        className="h-9 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 pb-1 pt-0 text-[16px] font-semibold leading-7 text-slate-900 shadow-none focus-visible:ring-0"
+        disabled={disabled}
+        className="h-9 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 pb-1 pt-0 text-[16px] font-semibold leading-7 text-slate-900 shadow-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-100"
         style={{ fontFamily: CERTIFICATE_FONT }}
       />
     </div>
@@ -351,12 +354,14 @@ function EditableEyeReportRow({
   onValueChange,
   result,
   onResultChange,
+  disabled = false,
 }: {
   title: string;
   value: string;
   onValueChange: (value: string) => void;
   result: string;
   onResultChange: (value: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="grid border-b border-slate-500 last:border-b-0 md:grid-cols-[minmax(0,1fr)_116px]">
@@ -374,7 +379,8 @@ function EditableEyeReportRow({
             autoCorrect="off"
             autoCapitalize="none"
             autoComplete="off"
-            className="min-h-0 w-full resize-none border-0 bg-transparent px-0 py-0 text-[12px] leading-[1.1rem] text-slate-900 shadow-none focus-visible:ring-0"
+            disabled={disabled}
+            className="min-h-0 w-full resize-none border-0 bg-transparent px-0 py-0 text-[12px] leading-[1.1rem] text-slate-900 shadow-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-100"
             style={{ fontFamily: SECTION_FONT, fontWeight: 600 }}
           />
         </div>
@@ -387,7 +393,8 @@ function EditableEyeReportRow({
           autoCorrect="off"
           autoCapitalize="none"
           autoComplete="off"
-          className="h-auto min-h-[40px] w-full rounded-none border border-emerald-700 bg-[#e8f5df] px-2 py-2 text-center text-[11px] font-semibold uppercase text-emerald-800 shadow-none focus-visible:ring-0"
+          disabled={disabled}
+          className="h-auto min-h-[40px] w-full rounded-none border border-emerald-700 bg-[#e8f5df] px-2 py-2 text-center text-[11px] font-semibold uppercase text-emerald-800 shadow-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-100"
           style={{ fontFamily: SECTION_FONT }}
         />
       </div>
@@ -497,6 +504,7 @@ function EditableReportRow({
   result,
   onResultChange,
   extra,
+  disabled = false,
 }: {
   title: string;
   value: string;
@@ -504,6 +512,7 @@ function EditableReportRow({
   result: string;
   onResultChange: (value: string) => void;
   extra?: React.ReactNode;
+  disabled?: boolean;
 }) {
   return (
     <div className="grid border-b border-slate-500 last:border-b-0 md:grid-cols-[minmax(0,1fr)_116px]">
@@ -519,7 +528,8 @@ function EditableReportRow({
           autoCorrect="off"
           autoCapitalize="none"
           autoComplete="off"
-          className="min-h-0 resize-none border-0 bg-transparent px-0 py-0 text-[12px] leading-[1.15rem] text-slate-900 shadow-none focus-visible:ring-0"
+          disabled={disabled}
+          className="min-h-0 resize-none border-0 bg-transparent px-0 py-0 text-[12px] leading-[1.15rem] text-slate-900 shadow-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-100"
           style={{ fontFamily: SECTION_FONT, fontWeight: 400 }}
         />
         {extra}
@@ -532,7 +542,8 @@ function EditableReportRow({
           autoCorrect="off"
           autoCapitalize="none"
           autoComplete="off"
-          className="h-auto min-h-[40px] w-full rounded-none border border-emerald-700 bg-[#e8f5df] px-2 py-2 text-center text-[11px] font-semibold uppercase text-emerald-800 shadow-none focus-visible:ring-0"
+          disabled={disabled}
+          className="h-auto min-h-[40px] w-full rounded-none border border-emerald-700 bg-[#e8f5df] px-2 py-2 text-center text-[11px] font-semibold uppercase text-emerald-800 shadow-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-100"
           style={{ fontFamily: SECTION_FONT }}
         />
       </div>
@@ -555,7 +566,6 @@ export default function DoctorMfcDetail() {
   const [draft, setDraft] = useState<MfcDraft>({});
   const [resolvedPhotoUrl, setResolvedPhotoUrl] = useState("");
   const [isCompleting, setIsCompleting] = useState(false);
-  const [isDraftDirty, setIsDraftDirty] = useState(false);
   useEffect(() => {
     if (!data) return;
     const officerName = resolveOfficerName(data.officerName, doctor);
@@ -581,7 +591,6 @@ export default function DoctorMfcDetail() {
       finalSummary: data.finalSummary || DEFAULT_DESCRIPTION,
       status: data.status ?? "draft",
     });
-    setIsDraftDirty(false);
   }, [data, doctor]);
 
   useEffect(() => {
@@ -607,7 +616,6 @@ export default function DoctorMfcDetail() {
 
   const setField = (field: string, value: string) => {
     setDraft((prev) => ({ ...prev, [field]: value }));
-    setIsDraftDirty(true);
   };
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -656,7 +664,6 @@ export default function DoctorMfcDetail() {
     setDraft(payload);
     await doctorFetch(`/mfc-cases/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
     await queryClient.invalidateQueries({ queryKey: ["doctor-mfc-detail", id] });
-    setIsDraftDirty(false);
   };
 
   const complete = async () => {
@@ -670,7 +677,6 @@ export default function DoctorMfcDetail() {
       await doctorFetch(`/mfc-cases/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
       await doctorFetch(`/mfc-cases/${id}/complete`, { method: "POST" });
       await queryClient.invalidateQueries({ queryKey: ["doctor-mfc-detail", id] });
-      setIsDraftDirty(false);
       toast({
         title: "MFC confirmed",
         description: "This certificate is now marked as completed.",
@@ -687,7 +693,6 @@ export default function DoctorMfcDetail() {
   };
 
   const isCompleted = valueOf(draft, "status") === "completed";
-  const canReconfirm = isCompleted && isDraftDirty;
 
   const downloadDocxPreviewPage = async (page: 1 | 2) => {
     const host = document.createElement("div");
@@ -732,7 +737,8 @@ export default function DoctorMfcDetail() {
                 <button
                   type="button"
                   onClick={() => photoUploadInputRef.current?.click()}
-                  className="inline-flex items-center rounded-md border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-cyan-100 transition hover:border-cyan-300/60 hover:bg-cyan-400/18"
+                  disabled={isCompleted}
+                  className="inline-flex items-center rounded-md border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-cyan-100 transition hover:border-cyan-300/60 hover:bg-cyan-400/18 disabled:cursor-not-allowed disabled:opacity-45"
                 >
                   Upload Photo
                 </button>
@@ -741,6 +747,7 @@ export default function DoctorMfcDetail() {
                 value={valueOf(draft, "sourceAttachmentUrl")}
                 onChange={(event) => setField("sourceAttachmentUrl", event.target.value)}
                 placeholder="https://..."
+                disabled={isCompleted}
                 spellCheck={false}
                 autoCorrect="off"
                 autoCapitalize="none"
@@ -755,46 +762,42 @@ export default function DoctorMfcDetail() {
               />
               <div className="text-[11px] text-muted-foreground">You can use either an image link or upload a photo file.</div>
             </div>
-            <Button onClick={() => void save()}>Save Changes</Button>
-            <Button
-              type="button"
-              onClick={() => void complete()}
-              disabled={isCompleting}
-              className={[
-                "group relative h-11 min-w-[160px] overflow-hidden rounded-md border px-4 text-[11px] font-semibold uppercase tracking-[0.24em] transition-all duration-300",
-                "before:absolute before:inset-x-[10%] before:top-0 before:h-px before:bg-white/70 before:content-['']",
-                "after:absolute after:inset-x-3 after:bottom-0 after:h-[2px] after:rounded-full after:bg-black/25 after:blur-[1px] after:content-['']",
-                isCompleted && !canReconfirm
-                  ? "border-emerald-300/70 bg-[linear-gradient(180deg,#67f3cd_0%,#28cfa8_46%,#129579_100%)] text-slate-950 shadow-[0_10px_24px_rgba(16,185,129,0.32),0_4px_0_#0a6c59] hover:translate-y-0"
-                  : canReconfirm
-                    ? "border-amber-200/80 bg-[linear-gradient(180deg,#fff3b2_0%,#ffd95e_18%,#f8b72f_54%,#b86a09_100%)] text-slate-950 shadow-[0_12px_28px_rgba(245,158,11,0.32),0_4px_0_#8a4a06] hover:-translate-y-0.5 hover:shadow-[0_16px_32px_rgba(245,158,11,0.4),0_5px_0_#8a4a06]"
-                  : "border-cyan-300/70 bg-[linear-gradient(180deg,#b8f7ff_0%,#53e4ff_16%,#12c6ee_52%,#0b7bb5_100%)] text-slate-950 shadow-[0_12px_26px_rgba(6,182,212,0.34),0_4px_0_#0c567c] hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(6,182,212,0.42),0_5px_0_#0c567c]",
-                isCompleting ? "animate-pulse cursor-wait" : "",
-                canReconfirm
-                  ? "active:translate-y-[3px] active:shadow-[0_4px_12px_rgba(245,158,11,0.28),0_1px_0_#8a4a06]"
-                  : !isCompleted
-                    ? "active:translate-y-[3px] active:shadow-[0_4px_12px_rgba(6,182,212,0.28),0_1px_0_#0c567c]"
-                    : "",
-                "disabled:opacity-100",
-              ].join(" ")}
-            >
-              <span className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.55),transparent_52%)] opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
-              <span className="absolute inset-x-0 bottom-0 h-1/2 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.18))]" />
-              <span className="relative z-10 flex items-center justify-center gap-2">
-                <span
+            {isCompleted ? (
+              <div className="flex items-center justify-end">
+                <div className="group relative flex h-11 min-w-[160px] items-center justify-center overflow-hidden rounded-md border border-emerald-300/70 bg-[linear-gradient(180deg,#67f3cd_0%,#28cfa8_46%,#129579_100%)] px-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-950 shadow-[0_10px_24px_rgba(16,185,129,0.32),0_4px_0_#0a6c59]">
+                  <span className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.55),transparent_52%)] opacity-90" />
+                  <span className="absolute inset-x-3 bottom-0 h-[2px] rounded-full bg-black/25 blur-[1px]" />
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    <span className="inline-block h-2.5 w-2.5 rounded-full border border-slate-950/20 bg-emerald-100 shadow-[0_0_10px_rgba(255,255,255,0.9)]" />
+                    <span>Confirmed MFC</span>
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <>
+                <Button onClick={() => void save()}>Save Changes</Button>
+                <Button
+                  type="button"
+                  onClick={() => void complete()}
+                  disabled={isCompleting}
                   className={[
-                    "inline-block h-2.5 w-2.5 rounded-full border border-slate-950/20",
-                    isCompleted && !canReconfirm
-                      ? "bg-emerald-100 shadow-[0_0_10px_rgba(255,255,255,0.9)]"
-                      : canReconfirm
-                        ? "bg-amber-50 shadow-[0_0_10px_rgba(255,248,200,0.95)]"
-                        : "bg-slate-950/90",
-                    isCompleting ? "animate-ping" : "",
+                    "group relative h-11 min-w-[160px] overflow-hidden rounded-md border px-4 text-[11px] font-semibold uppercase tracking-[0.24em] transition-all duration-300",
+                    "before:absolute before:inset-x-[10%] before:top-0 before:h-px before:bg-white/70 before:content-['']",
+                    "after:absolute after:inset-x-3 after:bottom-0 after:h-[2px] after:rounded-full after:bg-black/25 after:blur-[1px] after:content-['']",
+                    "border-cyan-300/70 bg-[linear-gradient(180deg,#b8f7ff_0%,#53e4ff_16%,#12c6ee_52%,#0b7bb5_100%)] text-slate-950 shadow-[0_12px_26px_rgba(6,182,212,0.34),0_4px_0_#0c567c] hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(6,182,212,0.42),0_5px_0_#0c567c]",
+                    isCompleting ? "animate-pulse cursor-wait" : "active:translate-y-[3px] active:shadow-[0_4px_12px_rgba(6,182,212,0.28),0_1px_0_#0c567c]",
+                    "disabled:opacity-100",
                   ].join(" ")}
-                />
-                <span>{isCompleting ? "Confirming..." : canReconfirm ? "Reconfirm MFC" : isCompleted ? "Confirmed MFC" : "Complete MFC"}</span>
-              </span>
-            </Button>
+                >
+                  <span className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.55),transparent_52%)] opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
+                  <span className="absolute inset-x-0 bottom-0 h-1/2 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.18))]" />
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    <span className={["inline-block h-2.5 w-2.5 rounded-full border border-slate-950/20 bg-slate-950/90", isCompleting ? "animate-ping" : ""].join(" ")} />
+                    <span>{isCompleting ? "Confirming..." : "Complete MFC"}</span>
+                  </span>
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -808,14 +811,14 @@ export default function DoctorMfcDetail() {
               </div>
               <div className="mt-6 grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_200px]">
                 <div className="space-y-3">
-                  <EditableField label="Name" value={valueOf(draft, "applicantName")} onChange={(value) => setField("applicantName", value)} />
-                  <EditableField label="Sex" value={valueOf(draft, "sex")} onChange={(value) => setField("sex", value)} />
-                  <EditableField label="D.O.B" value={valueOf(draft, "dateOfBirth")} onChange={(value) => setField("dateOfBirth", value)} />
-                  <EditableField label="CID" value={valueOf(draft, "cid")} onChange={(value) => setField("cid", value)} />
-                  <EditableField label="Number" value={valueOf(draft, "number")} onChange={(value) => setField("number", value)} />
-                  <EditableField label="Weight" value={valueOf(draft, "weight")} onChange={(value) => setField("weight", value)} />
-                  <EditableField label="MFC Reason" value={valueOf(draft, "mfcReason")} onChange={(value) => setField("mfcReason", value)} />
-                  <EditableField label="Date" value={valueOf(draft, "examDateText")} onChange={(value) => setField("examDateText", value)} />
+                  <EditableField label="Name" value={valueOf(draft, "applicantName")} onChange={(value) => setField("applicantName", value)} disabled={isCompleted} />
+                  <EditableField label="Sex" value={valueOf(draft, "sex")} onChange={(value) => setField("sex", value)} disabled={isCompleted} />
+                  <EditableField label="D.O.B" value={valueOf(draft, "dateOfBirth")} onChange={(value) => setField("dateOfBirth", value)} disabled={isCompleted} />
+                  <EditableField label="CID" value={valueOf(draft, "cid")} onChange={(value) => setField("cid", value)} disabled={isCompleted} />
+                  <EditableField label="Number" value={valueOf(draft, "number")} onChange={(value) => setField("number", value)} disabled={isCompleted} />
+                  <EditableField label="Weight" value={valueOf(draft, "weight")} onChange={(value) => setField("weight", value)} disabled={isCompleted} />
+                  <EditableField label="MFC Reason" value={valueOf(draft, "mfcReason")} onChange={(value) => setField("mfcReason", value)} disabled={isCompleted} />
+                  <EditableField label="Date" value={valueOf(draft, "examDateText")} onChange={(value) => setField("examDateText", value)} disabled={isCompleted} />
                 </div>
                 <div className="flex justify-center md:justify-end">
                   <PhotoBox url={resolvedPhotoUrl || valueOf(draft, "sourceAttachmentUrl")} imageClassName="h-full w-full object-cover object-center px-1 pt-1" />
@@ -837,6 +840,7 @@ export default function DoctorMfcDetail() {
                     onValueChange={(value) => setField("bloodTest", value)}
                     result={valueOf(draft, "bloodResult")}
                     onResultChange={(value) => setField("bloodResult", value)}
+                    disabled={isCompleted}
                   />
                   <EditableReportRow
                     title="MRI Test:"
@@ -844,6 +848,7 @@ export default function DoctorMfcDetail() {
                     onValueChange={(value) => setField("mriTest", value)}
                     result={valueOf(draft, "mriResult")}
                     onResultChange={(value) => setField("mriResult", value)}
+                    disabled={isCompleted}
                   />
                   <EditableEyeReportRow
                     title="Eye Test:"
@@ -851,6 +856,7 @@ export default function DoctorMfcDetail() {
                     onValueChange={(value) => setField("eyeTest", value)}
                     result={valueOf(draft, "eyeResult")}
                     onResultChange={(value) => setField("eyeResult", value)}
+                    disabled={isCompleted}
                   />
                 </div>
               </div>
@@ -875,14 +881,14 @@ export default function DoctorMfcDetail() {
               </div>
               <div className="mt-6 grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_200px]">
                 <div className="space-y-3">
-                  <EditableField label="Name" value={valueOf(draft, "applicantName")} onChange={(value) => setField("applicantName", value)} />
-                  <EditableField label="Sex" value={valueOf(draft, "sex")} onChange={(value) => setField("sex", value)} />
-                  <EditableField label="D.O.B" value={valueOf(draft, "dateOfBirth")} onChange={(value) => setField("dateOfBirth", value)} />
-                  <EditableField label="CID" value={valueOf(draft, "cid")} onChange={(value) => setField("cid", value)} />
-                  <EditableField label="Number" value={valueOf(draft, "number")} onChange={(value) => setField("number", value)} />
-                  <EditableField label="Weight" value={valueOf(draft, "weight")} onChange={(value) => setField("weight", value)} />
-                  <EditableField label="MFC Reason" value={valueOf(draft, "mfcReason")} onChange={(value) => setField("mfcReason", value)} />
-                  <EditableField label="Date" value={valueOf(draft, "examDateText")} onChange={(value) => setField("examDateText", value)} />
+                  <EditableField label="Name" value={valueOf(draft, "applicantName")} onChange={(value) => setField("applicantName", value)} disabled={isCompleted} />
+                  <EditableField label="Sex" value={valueOf(draft, "sex")} onChange={(value) => setField("sex", value)} disabled={isCompleted} />
+                  <EditableField label="D.O.B" value={valueOf(draft, "dateOfBirth")} onChange={(value) => setField("dateOfBirth", value)} disabled={isCompleted} />
+                  <EditableField label="CID" value={valueOf(draft, "cid")} onChange={(value) => setField("cid", value)} disabled={isCompleted} />
+                  <EditableField label="Number" value={valueOf(draft, "number")} onChange={(value) => setField("number", value)} disabled={isCompleted} />
+                  <EditableField label="Weight" value={valueOf(draft, "weight")} onChange={(value) => setField("weight", value)} disabled={isCompleted} />
+                  <EditableField label="MFC Reason" value={valueOf(draft, "mfcReason")} onChange={(value) => setField("mfcReason", value)} disabled={isCompleted} />
+                  <EditableField label="Date" value={valueOf(draft, "examDateText")} onChange={(value) => setField("examDateText", value)} disabled={isCompleted} />
                 </div>
                 <div className="flex justify-center md:justify-end">
                   <PhotoBox url={resolvedPhotoUrl || valueOf(draft, "sourceAttachmentUrl")} imageClassName="h-full w-full object-cover object-center px-1 pt-1" />
@@ -899,7 +905,8 @@ export default function DoctorMfcDetail() {
                   autoCorrect="off"
                   autoCapitalize="none"
                   autoComplete="off"
-                  className="min-h-0 resize-none border-0 bg-transparent px-0 py-0 text-[16px] leading-8 text-slate-900 shadow-none focus-visible:ring-0"
+                  disabled={isCompleted}
+                  className="min-h-0 resize-none border-0 bg-transparent px-0 py-0 text-[16px] leading-8 text-slate-900 shadow-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-100"
                   style={{ fontFamily: CERTIFICATE_FONT, fontWeight: 700 }}
                 />
               </div>
@@ -914,7 +921,8 @@ export default function DoctorMfcDetail() {
                     autoCorrect="off"
                     autoCapitalize="none"
                     autoComplete="off"
-                    className="h-9 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 py-0 text-[17px] font-extrabold leading-7 text-slate-900 shadow-none focus-visible:ring-0"
+                    disabled={isCompleted}
+                    className="h-9 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 py-0 text-[17px] font-extrabold leading-7 text-slate-900 shadow-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-100"
                     style={{ fontFamily: CERTIFICATE_FONT }}
                   />
                 </div>
@@ -927,7 +935,8 @@ export default function DoctorMfcDetail() {
                     autoCorrect="off"
                     autoCapitalize="none"
                     autoComplete="off"
-                    className="h-11 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 py-0 text-[30px] leading-none text-slate-900 shadow-none focus-visible:ring-0"
+                    disabled={isCompleted}
+                    className="h-11 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 py-0 text-[30px] leading-none text-slate-900 shadow-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-100"
                     style={{ fontFamily: "'Segoe Script', 'Brush Script MT', 'Segoe Print', cursive", fontWeight: 500 }}
                   />
                 </div>
