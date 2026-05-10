@@ -133,7 +133,11 @@ function EditableField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder ?? label}
-        className="h-8 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 pb-1 pt-0 text-[15px] font-semibold text-slate-900 shadow-none focus-visible:ring-0"
+        spellCheck={false}
+        autoCorrect="off"
+        autoCapitalize="none"
+        autoComplete="off"
+        className="h-9 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 pb-1 pt-0 text-[16px] font-semibold leading-7 text-slate-900 shadow-none focus-visible:ring-0"
         style={{ fontFamily: CERTIFICATE_FONT }}
       />
     </div>
@@ -208,7 +212,11 @@ function EditableReportRow({
           value={value}
           onChange={(event) => onValueChange(event.target.value)}
           rows={title === "MRI Test:" ? 9 : 5}
-          className="min-h-0 resize-none border-0 bg-transparent px-0 py-0 text-[14px] leading-6 text-slate-900 shadow-none focus-visible:ring-0"
+          spellCheck={false}
+          autoCorrect="off"
+          autoCapitalize="none"
+          autoComplete="off"
+          className="min-h-0 resize-none border-0 bg-transparent px-0 py-0 text-[15px] leading-7 text-slate-900 shadow-none focus-visible:ring-0"
           style={{ fontFamily: CERTIFICATE_FONT }}
         />
         {extra}
@@ -217,6 +225,10 @@ function EditableReportRow({
         <Input
           value={result}
           onChange={(event) => onResultChange(event.target.value)}
+          spellCheck={false}
+          autoCorrect="off"
+          autoCapitalize="none"
+          autoComplete="off"
           className="h-auto min-h-[42px] w-full rounded-none border border-emerald-700 bg-[#e8f5df] px-2 py-2 text-center text-[13px] font-bold uppercase text-emerald-800 shadow-none focus-visible:ring-0"
           style={{ fontFamily: CERTIFICATE_FONT }}
         />
@@ -305,6 +317,10 @@ export default function DoctorMfcDetail() {
                 value={valueOf(draft, "sourceAttachmentUrl")}
                 onChange={(event) => setField("sourceAttachmentUrl", event.target.value)}
                 placeholder="https://..."
+                spellCheck={false}
+                autoCorrect="off"
+                autoCapitalize="none"
+                autoComplete="off"
               />
             </div>
             <Button onClick={() => void save()}>Save Changes</Button>
@@ -407,7 +423,11 @@ export default function DoctorMfcDetail() {
                   value={valueOf(draft, "finalSummary")}
                   onChange={(event) => setField("finalSummary", event.target.value)}
                   rows={5}
-                  className="min-h-0 resize-none border-0 bg-transparent px-0 py-0 text-[14px] leading-[1.55] text-slate-900 shadow-none focus-visible:ring-0"
+                  spellCheck={false}
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  autoComplete="off"
+                  className="min-h-0 resize-none border-0 bg-transparent px-0 py-0 text-[16px] leading-8 text-slate-900 shadow-none focus-visible:ring-0"
                   style={{ fontFamily: CERTIFICATE_FONT, fontWeight: 700 }}
                 />
               </div>
@@ -418,7 +438,11 @@ export default function DoctorMfcDetail() {
                   <Input
                     value={valueOf(draft, "officerName")}
                     onChange={(event) => setField("officerName", event.target.value)}
-                    className="h-8 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 py-0 text-[16px] font-extrabold text-slate-900 shadow-none focus-visible:ring-0"
+                    spellCheck={false}
+                    autoCorrect="off"
+                    autoCapitalize="none"
+                    autoComplete="off"
+                    className="h-9 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 py-0 text-[17px] font-extrabold leading-7 text-slate-900 shadow-none focus-visible:ring-0"
                     style={{ fontFamily: CERTIFICATE_FONT }}
                   />
                 </div>
@@ -427,7 +451,11 @@ export default function DoctorMfcDetail() {
                   <Input
                     value={valueOf(draft, "officerSignature")}
                     onChange={(event) => setField("officerSignature", event.target.value)}
-                    className="h-10 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 py-0 text-[28px] text-slate-900 shadow-none focus-visible:ring-0"
+                    spellCheck={false}
+                    autoCorrect="off"
+                    autoCapitalize="none"
+                    autoComplete="off"
+                    className="h-11 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 py-0 text-[30px] leading-none text-slate-900 shadow-none focus-visible:ring-0"
                     style={{ fontFamily: "'Segoe Script', 'Brush Script MT', 'Segoe Print', cursive", fontWeight: 500 }}
                   />
                 </div>
