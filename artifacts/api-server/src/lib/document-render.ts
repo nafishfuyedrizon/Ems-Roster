@@ -1,3 +1,5 @@
+import { MFC_EYE_CHART_DATA_URI, MFC_LOGO_DATA_URI } from "./mfc-assets.js";
+
 function esc(value: string | null | undefined): string {
   return (value ?? "")
     .replaceAll("&", "&amp;")
@@ -81,23 +83,19 @@ function renderApplicantColumn(fields: Array<[string, string]>, startX: number, 
 }
 
 function renderMountZonahMark(x: number, y: number, size: number): string {
-  const scale = size / 100;
-  return `<g transform="translate(${x}, ${y}) scale(${scale})">
-    <path d="M50 10 58 33 82 18 68 40 92 50 68 60 82 82 58 67 50 90 42 67 18 82 32 60 8 50 32 40 18 18 42 33Z" fill="#9fe3ff" stroke="#0d6db8" stroke-width="3"/>
-    <circle cx="50" cy="50" r="12" fill="#fff" stroke="#0d6db8" stroke-width="3"/>
-  </g>`;
+  return `<image href="${MFC_LOGO_DATA_URI}" x="${x}" y="${y}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid meet"/>`;
 }
 
 function renderPhotoFrame(x: number, y: number, width: number, height: number, imageUrl: string): string {
   const safeUrl = esc(imageUrl);
   if (safeUrl) {
     return `
-    <rect x="${x}" y="${y}" width="${width}" height="${height}" rx="10" fill="#fff" stroke="#111827" stroke-width="2"/>
-    <image href="${safeUrl}" x="${x + 8}" y="${y + 8}" width="${width - 16}" height="${height - 16}" preserveAspectRatio="xMidYMid slice"/>
+    <rect x="${x}" y="${y}" width="${width}" height="${height}" fill="#fff" stroke="#111827" stroke-width="1.2"/>
+    <image href="${safeUrl}" x="${x + 2}" y="${y + 2}" width="${width - 4}" height="${height - 4}" preserveAspectRatio="xMidYMid slice"/>
     `;
   }
   return `
-    <rect x="${x}" y="${y}" width="${width}" height="${height}" rx="10" fill="#fff" stroke="#111827" stroke-width="2"/>
+    <rect x="${x}" y="${y}" width="${width}" height="${height}" fill="#fff" stroke="#111827" stroke-width="1.2"/>
     <circle cx="${x + width / 2}" cy="${y + height / 2}" r="66" fill="none" stroke="#111827" stroke-width="6"/>
     <rect x="${x + width / 2 - 42}" y="${y + height / 2 - 26}" width="84" height="52" fill="none" stroke="#111827" stroke-width="6"/>
     <path d="M${x + width / 2 - 28} ${y + height / 2 + 20}l20-28 16 16 10-12 20 24" fill="none" stroke="#111827" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -115,21 +113,7 @@ function renderSignatureLine(label: string, value: string, x: number, y: number)
 }
 
 function renderEyeChartMini(x: number, y: number): string {
-  const rows = [
-    { text: "E", size: 30 },
-    { text: "FP", size: 24 },
-    { text: "TOZ", size: 20 },
-    { text: "LPED", size: 17 },
-    { text: "PECFD", size: 15 },
-    { text: "EDFCZP", size: 13 },
-    { text: "FELOPZD", size: 12 },
-  ];
-  return rows
-    .map((row, index) => {
-      const lineY = y + index * 18;
-      return `<text x="${x}" y="${lineY}" text-anchor="middle" font-size="${row.size}" font-weight="700" fill="#111827" font-family="'Times New Roman', serif" letter-spacing="2">${row.text}</text>`;
-    })
-    .join("");
+  return `<image href="${MFC_EYE_CHART_DATA_URI}" x="${x}" y="${y}" width="126" height="186" preserveAspectRatio="xMidYMid meet"/>`;
 }
 
 function renderResultBadge(x: number, y: number, width: number, height: number, value: string): string {
@@ -171,21 +155,21 @@ export function renderMfcSvg(input: Record<string, unknown>, pageNumber?: 1 | 2)
     ),
     72,
   );
-  const bloodHeight = Math.max(118, bloodLines.length * 22 + 42);
-  const mriHeight = Math.max(214, mriLines.length * 20 + 48);
-  const eyeHeight = Math.max(200, eyeLines.length * 18 + 118);
+  const bloodHeight = Math.max(118, bloodLines.length * 20 + 42);
+  const mriHeight = Math.max(228, mriLines.length * 18 + 56);
+  const eyeHeight = Math.max(222, eyeLines.length * 18 + 128);
   const canvasWidth = 860;
   const pageWidth = 760;
   const pageX = 50;
   const page1Y = 26;
   const pageGap = 34;
   const marginX = pageX + 44;
-  const photoX = pageX + 560;
-  const photoY = page1Y + 158;
-  const photoW = 150;
-  const photoH = 165;
+  const photoX = pageX + 548;
+  const photoY = page1Y + 144;
+  const photoW = 142;
+  const photoH = 158;
   const tableX = marginX;
-  const tableY = page1Y + 500;
+  const tableY = page1Y + 476;
   const tableW = 640;
   const resultColW = 118;
   const contentColW = tableW - resultColW;
@@ -199,9 +183,9 @@ export function renderMfcSvg(input: Record<string, unknown>, pageNumber?: 1 | 2)
   const pageHeight = signatureY - page1Y + 54;
   const page2Y = page1Y + pageHeight + pageGap;
   const headerTop = page1Y + 36;
-  const secondPhotoY = page2Y + 170;
-  const descriptionY = page2Y + 474;
-  const descriptionBlockHeight = 214;
+  const secondPhotoY = page2Y + 150;
+  const descriptionY = page2Y + 422;
+  const descriptionBlockHeight = 172;
   const rootWidth = pageNumber ? pageWidth : canvasWidth;
   const rootHeight = pageNumber ? pageHeight : page2Y + pageHeight + pageGap;
   const viewBox = pageNumber
@@ -214,36 +198,36 @@ export function renderMfcSvg(input: Record<string, unknown>, pageNumber?: 1 | 2)
   <rect x="${pageX}" y="${page2Y}" width="${pageWidth}" height="${pageHeight}" fill="#ffffff"/>
 
   <line x1="${pageX + 26}" y1="${headerTop}" x2="${pageX + pageWidth - 26}" y2="${headerTop}" stroke="#444" stroke-width="1"/>
-  ${renderMountZonahMark(pageX + 54, headerTop + 16, 54)}
-  ${renderMountZonahMark(pageX + pageWidth - 106, headerTop + 16, 54)}
-  <text x="${pageX + pageWidth / 2}" y="${headerTop + 26}" text-anchor="middle" font-size="27" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MOUNT ZONAH</text>
-  <text x="${pageX + pageWidth / 2}" y="${headerTop + 66}" text-anchor="middle" font-size="18" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MEDICAL FITNESS CERTIFICATE</text>
+  ${renderMountZonahMark(pageX + 42, headerTop + 6, 52)}
+  ${renderMountZonahMark(pageX + pageWidth - 94, headerTop + 6, 52)}
+  <text x="${pageX + pageWidth / 2}" y="${headerTop + 30}" text-anchor="middle" font-size="31" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MOUNT ZONAH</text>
+  <text x="${pageX + pageWidth / 2}" y="${headerTop + 68}" text-anchor="middle" font-size="17" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MEDICAL FITNESS CERTIFICATE</text>
   <line x1="${pageX + 26}" y1="${headerTop + 84}" x2="${pageX + pageWidth - 26}" y2="${headerTop + 84}" stroke="#444" stroke-width="1"/>
 
-  <text x="${pageX + pageWidth / 2}" y="${page1Y + 150}" text-anchor="middle" font-size="18" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Applicant Information</text>
+  <text x="${pageX + pageWidth / 2}" y="${page1Y + 146}" text-anchor="middle" font-size="18" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Applicant Information</text>
 
-  <text x="${marginX}" y="${page1Y + 192}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Name:</text>
-  <text x="${marginX}" y="${page1Y + 226}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Sex:</text>
-  <text x="${marginX}" y="${page1Y + 260}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">D.O.B:</text>
-  <text x="${marginX}" y="${page1Y + 294}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">CID:</text>
-  <text x="${marginX}" y="${page1Y + 328}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Number:</text>
-  <text x="${marginX}" y="${page1Y + 362}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Weight:</text>
-  <text x="${marginX}" y="${page1Y + 396}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">MFC Reason:</text>
-  <text x="${marginX}" y="${page1Y + 430}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Date:</text>
+  <text x="${marginX}" y="${page1Y + 188}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Name:</text>
+  <text x="${marginX}" y="${page1Y + 222}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Sex:</text>
+  <text x="${marginX}" y="${page1Y + 256}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">D.O.B:</text>
+  <text x="${marginX}" y="${page1Y + 290}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">CID:</text>
+  <text x="${marginX}" y="${page1Y + 324}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Number:</text>
+  <text x="${marginX}" y="${page1Y + 358}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Weight:</text>
+  <text x="${marginX}" y="${page1Y + 392}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">MFC Reason:</text>
+  <text x="${marginX}" y="${page1Y + 426}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Date:</text>
 
-  <text x="${marginX + 84}" y="${page1Y + 192}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Name"])}</text>
-  <text x="${marginX + 84}" y="${page1Y + 226}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Sex"])}</text>
-  <text x="${marginX + 84}" y="${page1Y + 260}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["D.O.B"])}</text>
-  <text x="${marginX + 84}" y="${page1Y + 294}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["CID"])}</text>
-  <text x="${marginX + 84}" y="${page1Y + 328}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Number"])}</text>
-  <text x="${marginX + 84}" y="${page1Y + 362}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Weight"])}</text>
-  <text x="${marginX + 84}" y="${page1Y + 396}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["MFC Reason"])}</text>
-  <text x="${marginX + 84}" y="${page1Y + 430}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Date"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 188}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Name"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 222}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Sex"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 256}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["D.O.B"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 290}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["CID"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 324}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Number"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 358}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Weight"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 392}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["MFC Reason"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 426}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Date"])}</text>
 
   ${renderPhotoFrame(photoX, photoY, photoW, photoH, photoUrl)}
 
-  <line x1="${marginX}" y1="${page1Y + 458}" x2="${pageX + pageWidth - 44}" y2="${page1Y + 458}" stroke="#444" stroke-width="1"/>
-  <text x="${marginX}" y="${page1Y + 488}" font-size="18" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Test Reports:</text>
+  <line x1="${marginX}" y1="${page1Y + 454}" x2="${pageX + pageWidth - 44}" y2="${page1Y + 454}" stroke="#444" stroke-width="1"/>
+  <text x="${marginX}" y="${page1Y + 484}" font-size="18" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Test Reports:</text>
 
   <rect x="${tableX}" y="${tableY}" width="${tableW}" height="${totalTableHeight}" fill="none" stroke="#111827" stroke-width="1.4"/>
   <line x1="${resultX}" y1="${tableY}" x2="${resultX}" y2="${tableY + totalTableHeight}" stroke="#111827" stroke-width="1.2"/>
@@ -258,12 +242,12 @@ export function renderMfcSvg(input: Record<string, unknown>, pageNumber?: 1 | 2)
   ${renderResultBadge(resultX + 8, tableY + 34 + (bloodHeight / 2) - 18, resultColW - 16, 36, String(input.bloodResult ?? "ALL GOOD"))}
 
   <text x="${tableX + 12}" y="${tableY + 34 + bloodHeight + 26}" font-size="16" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MRI Test:</text>
-  ${textLines(tableX + 16, tableY + 34 + bloodHeight + 50, mriLines, { size: 11.5, color: "#111827", lineHeight: 18 })}
+  ${textLines(tableX + 16, tableY + 34 + bloodHeight + 50, mriLines, { size: 11.5, color: "#111827", lineHeight: 17 })}
   ${renderResultBadge(resultX + 8, tableY + 34 + bloodHeight + (mriHeight / 2) + 8, resultColW - 16, 36, String(input.mriResult ?? "ALL GOOD"))}
 
   <text x="${tableX + 12}" y="${tableY + 34 + bloodHeight + mriHeight + 24}" font-size="16" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Eye Test:</text>
-  ${renderEyeChartMini(tableX + 62, tableY + 34 + bloodHeight + mriHeight + 58)}
-  ${textLines(tableX + 16, tableY + 34 + bloodHeight + mriHeight + 190, eyeLines, { size: 11.5, color: "#111827", lineHeight: 16 })}
+  ${renderEyeChartMini(tableX + 42, tableY + 34 + bloodHeight + mriHeight + 54)}
+  ${textLines(tableX + 16, tableY + 34 + bloodHeight + mriHeight + 214, eyeLines, { size: 11.5, color: "#111827", lineHeight: 16 })}
   ${renderResultBadge(resultX + 8, tableY + 34 + bloodHeight + mriHeight + (eyeHeight / 2) + 2, resultColW - 16, 36, String(input.eyeResult ?? "ALL GOOD"))}
 
   <text x="${marginX}" y="${signatureY}" font-size="14" font-weight="700" fill="#2563eb" text-decoration="underline" font-family="'Times New Roman', serif">Signature of Medical Officer:</text>
@@ -271,25 +255,25 @@ export function renderMfcSvg(input: Record<string, unknown>, pageNumber?: 1 | 2)
   <line x1="${marginX + 205}" y1="${signatureY + 6}" x2="${marginX + 420}" y2="${signatureY + 6}" stroke="#94a3b8" stroke-width="1"/>
 
   <line x1="${pageX + 26}" y1="${page2Y + 36}" x2="${pageX + pageWidth - 26}" y2="${page2Y + 36}" stroke="#444" stroke-width="1"/>
-  ${renderMountZonahMark(pageX + 54, page2Y + 52, 54)}
-  ${renderMountZonahMark(pageX + pageWidth - 106, page2Y + 52, 54)}
-  <text x="${pageX + pageWidth / 2}" y="${page2Y + 62}" text-anchor="middle" font-size="27" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MOUNT ZONAH</text>
-  <text x="${pageX + pageWidth / 2}" y="${page2Y + 102}" text-anchor="middle" font-size="18" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MEDICAL FITNESS CERTIFICATE</text>
+  ${renderMountZonahMark(pageX + 42, page2Y + 22, 52)}
+  ${renderMountZonahMark(pageX + pageWidth - 94, page2Y + 22, 52)}
+  <text x="${pageX + pageWidth / 2}" y="${page2Y + 48}" text-anchor="middle" font-size="31" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MOUNT ZONAH</text>
+  <text x="${pageX + pageWidth / 2}" y="${page2Y + 86}" text-anchor="middle" font-size="17" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MEDICAL FITNESS CERTIFICATE</text>
   <line x1="${pageX + 26}" y1="${page2Y + 120}" x2="${pageX + pageWidth - 26}" y2="${page2Y + 120}" stroke="#444" stroke-width="1"/>
-  <text x="${pageX + pageWidth / 2}" y="${page2Y + 168}" text-anchor="middle" font-size="18" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Applicant Information</text>
+  <text x="${pageX + pageWidth / 2}" y="${page2Y + 158}" text-anchor="middle" font-size="18" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Applicant Information</text>
 
-  <text x="${pageX + 58}" y="${page2Y + 216}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Name: ${esc(fieldMap["Name"])}</text>
-  <text x="${pageX + 58}" y="${page2Y + 250}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Sex: ${esc(fieldMap["Sex"])}</text>
-  <text x="${pageX + 58}" y="${page2Y + 284}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">D.O.B: ${esc(fieldMap["D.O.B"])}</text>
-  <text x="${pageX + 58}" y="${page2Y + 318}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">CID: ${esc(fieldMap["CID"])}</text>
-  <text x="${pageX + 58}" y="${page2Y + 352}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Number: ${esc(fieldMap["Number"])}</text>
-  <text x="${pageX + 58}" y="${page2Y + 386}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Weight: ${esc(fieldMap["Weight"])}</text>
-  <text x="${pageX + 58}" y="${page2Y + 420}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">MFC Reason: ${esc(fieldMap["MFC Reason"])}</text>
-  <text x="${pageX + 58}" y="${page2Y + 454}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Date: ${esc(fieldMap["Date"])}</text>
-  ${renderPhotoFrame(pageX + 510, secondPhotoY, 174, 184, photoUrl)}
+  <text x="${pageX + 58}" y="${page2Y + 206}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Name: ${esc(fieldMap["Name"])}</text>
+  <text x="${pageX + 58}" y="${page2Y + 240}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Sex: ${esc(fieldMap["Sex"])}</text>
+  <text x="${pageX + 58}" y="${page2Y + 274}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">D.O.B: ${esc(fieldMap["D.O.B"])}</text>
+  <text x="${pageX + 58}" y="${page2Y + 308}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">CID: ${esc(fieldMap["CID"])}</text>
+  <text x="${pageX + 58}" y="${page2Y + 342}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Number: ${esc(fieldMap["Number"])}</text>
+  <text x="${pageX + 58}" y="${page2Y + 376}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Weight: ${esc(fieldMap["Weight"])}</text>
+  <text x="${pageX + 58}" y="${page2Y + 410}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">MFC Reason: ${esc(fieldMap["MFC Reason"])}</text>
+  <text x="${pageX + 58}" y="${page2Y + 444}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Date: ${esc(fieldMap["Date"])}</text>
+  ${renderPhotoFrame(pageX + 520, secondPhotoY, 162, 178, photoUrl)}
 
   <text x="${pageX + 58}" y="${descriptionY}" font-size="16" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Description:</text>
-  ${textLines(pageX + 58, descriptionY + 30, summaryLines, { size: 14, weight: 700, color: "#111827", lineHeight: 22 })}
+  ${textLines(pageX + 182, descriptionY, summaryLines, { size: 14, weight: 700, color: "#111827", lineHeight: 22 })}
 
   <text x="${pageX + 58}" y="${descriptionY + descriptionBlockHeight}" font-size="16" font-weight="800" fill="#2563eb" text-decoration="underline" font-family="'Times New Roman', serif">Name of Medical Officer:</text>
   <text x="${pageX + 286}" y="${descriptionY + descriptionBlockHeight}" font-size="16" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">${esc(officerName)}</text>
