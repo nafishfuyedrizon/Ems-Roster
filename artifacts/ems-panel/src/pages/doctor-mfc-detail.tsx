@@ -302,7 +302,102 @@ export default function DoctorMfcDetail() {
 
   return (
     <DoctorPageShell>
-      <div className="mx-auto grid max-w-[1320px] gap-6 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
+      <div className="mx-auto flex max-w-[1180px] flex-col gap-6">
+        <Card className="border-border/50 bg-card/50">
+          <CardContent className="flex flex-wrap gap-3 p-4">
+            <Button onClick={() => void save()}>Save Changes</Button>
+            <Button variant="outline" onClick={() => void complete()}>Complete MFC</Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/50 bg-card/50">
+          <CardHeader className="gap-4">
+            <div>
+              <CardTitle>Certificate Editor</CardTitle>
+              <p className="mt-2 text-sm text-muted-foreground">Edit from the top, then review the certificate below.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <SectionButton active={activeSection === "applicant"} label="Applicant" onClick={() => setActiveSection("applicant")} />
+              <SectionButton active={activeSection === "reports"} label="Reports" onClick={() => setActiveSection("reports")} />
+              <SectionButton active={activeSection === "officer"} label="Officer" onClick={() => setActiveSection("officer")} />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {activeSection === "applicant" ? (
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <EditorBlock label="Applicant Name">
+                  <Input value={valueOf(draft, "applicantName")} onChange={(event) => setField("applicantName", event.target.value)} placeholder="Applicant name" />
+                </EditorBlock>
+                <EditorBlock label="Applicant Photo URL">
+                  <Input value={valueOf(draft, "sourceAttachmentUrl")} onChange={(event) => setField("sourceAttachmentUrl", event.target.value)} placeholder="https://..." />
+                </EditorBlock>
+                <EditorBlock label="Sex">
+                  <Input value={valueOf(draft, "sex")} onChange={(event) => setField("sex", event.target.value)} placeholder="Sex" />
+                </EditorBlock>
+                <EditorBlock label="Date Of Birth">
+                  <Input value={valueOf(draft, "dateOfBirth")} onChange={(event) => setField("dateOfBirth", event.target.value)} placeholder="D.O.B" />
+                </EditorBlock>
+                <EditorBlock label="CID">
+                  <Input value={valueOf(draft, "cid")} onChange={(event) => setField("cid", event.target.value)} placeholder="CID" />
+                </EditorBlock>
+                <EditorBlock label="Number">
+                  <Input value={valueOf(draft, "number")} onChange={(event) => setField("number", event.target.value)} placeholder="Number" />
+                </EditorBlock>
+                <EditorBlock label="Weight">
+                  <Input value={valueOf(draft, "weight")} onChange={(event) => setField("weight", event.target.value)} placeholder="Weight" />
+                </EditorBlock>
+                <EditorBlock label="Date">
+                  <Input value={valueOf(draft, "examDateText")} onChange={(event) => setField("examDateText", event.target.value)} placeholder="Date" />
+                </EditorBlock>
+                <div className="md:col-span-2 xl:col-span-3">
+                  <EditorBlock label="MFC Reason">
+                    <Input value={valueOf(draft, "mfcReason")} onChange={(event) => setField("mfcReason", event.target.value)} placeholder="MFC Reason" />
+                  </EditorBlock>
+                </div>
+              </div>
+            ) : null}
+
+            {activeSection === "reports" ? (
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_200px]">
+                <EditorBlock label="Blood Test">
+                  <Textarea value={valueOf(draft, "bloodTest")} rows={5} onChange={(event) => setField("bloodTest", event.target.value)} placeholder="Blood Test" />
+                </EditorBlock>
+                <EditorBlock label="Blood Result">
+                  <Input value={valueOf(draft, "bloodResult")} onChange={(event) => setField("bloodResult", event.target.value)} placeholder="Blood Result" />
+                </EditorBlock>
+                <EditorBlock label="MRI Test">
+                  <Textarea value={valueOf(draft, "mriTest")} rows={9} onChange={(event) => setField("mriTest", event.target.value)} placeholder="MRI Test" />
+                </EditorBlock>
+                <EditorBlock label="MRI Result">
+                  <Input value={valueOf(draft, "mriResult")} onChange={(event) => setField("mriResult", event.target.value)} placeholder="MRI Result" />
+                </EditorBlock>
+                <EditorBlock label="Eye Test">
+                  <Textarea value={valueOf(draft, "eyeTest")} rows={5} onChange={(event) => setField("eyeTest", event.target.value)} placeholder="Eye Test" />
+                </EditorBlock>
+                <EditorBlock label="Eye Result">
+                  <Input value={valueOf(draft, "eyeResult")} onChange={(event) => setField("eyeResult", event.target.value)} placeholder="Eye Result" />
+                </EditorBlock>
+              </div>
+            ) : null}
+
+            {activeSection === "officer" ? (
+              <div className="grid gap-4">
+                <EditorBlock label="Description">
+                  <Textarea value={valueOf(draft, "finalSummary")} rows={6} onChange={(event) => setField("finalSummary", event.target.value)} placeholder="Description" />
+                </EditorBlock>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <EditorBlock label="Medical Officer Name">
+                    <Input value={valueOf(draft, "officerName")} onChange={(event) => setField("officerName", event.target.value)} placeholder="Medical Officer Name" />
+                  </EditorBlock>
+                  <EditorBlock label="Medical Officer Signature">
+                    <Input value={valueOf(draft, "officerSignature")} onChange={(event) => setField("officerSignature", event.target.value)} placeholder="Medical Officer Signature" />
+                  </EditorBlock>
+                </div>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+
         <div className="space-y-6">
           <Paper>
             <CertificateHeader />
@@ -403,100 +498,7 @@ export default function DoctorMfcDetail() {
           </Paper>
         </div>
 
-        <div className="space-y-6 xl:sticky xl:top-24">
-          <Card className="border-border/50 bg-card/50">
-            <CardContent className="flex flex-wrap gap-3 p-4">
-              <Button onClick={() => void save()}>Save Changes</Button>
-              <Button variant="outline" onClick={() => void complete()}>Complete MFC</Button>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50 bg-card/50">
-            <CardHeader className="gap-4">
-              <div>
-                <CardTitle>Certificate Editor</CardTitle>
-                <p className="mt-2 text-sm text-muted-foreground">Edit from the side while keeping the certificate preview clean.</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <SectionButton active={activeSection === "applicant"} label="Applicant" onClick={() => setActiveSection("applicant")} />
-                <SectionButton active={activeSection === "reports"} label="Reports" onClick={() => setActiveSection("reports")} />
-                <SectionButton active={activeSection === "officer"} label="Officer" onClick={() => setActiveSection("officer")} />
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {activeSection === "applicant" ? (
-                <div className="grid gap-4">
-                  <EditorBlock label="Applicant Name">
-                    <Input value={valueOf(draft, "applicantName")} onChange={(event) => setField("applicantName", event.target.value)} placeholder="Applicant name" />
-                  </EditorBlock>
-                  <EditorBlock label="Applicant Photo URL">
-                    <Input value={valueOf(draft, "sourceAttachmentUrl")} onChange={(event) => setField("sourceAttachmentUrl", event.target.value)} placeholder="https://..." />
-                  </EditorBlock>
-                  <EditorBlock label="Sex">
-                    <Input value={valueOf(draft, "sex")} onChange={(event) => setField("sex", event.target.value)} placeholder="Sex" />
-                  </EditorBlock>
-                  <EditorBlock label="Date Of Birth">
-                    <Input value={valueOf(draft, "dateOfBirth")} onChange={(event) => setField("dateOfBirth", event.target.value)} placeholder="D.O.B" />
-                  </EditorBlock>
-                  <EditorBlock label="CID">
-                    <Input value={valueOf(draft, "cid")} onChange={(event) => setField("cid", event.target.value)} placeholder="CID" />
-                  </EditorBlock>
-                  <EditorBlock label="Number">
-                    <Input value={valueOf(draft, "number")} onChange={(event) => setField("number", event.target.value)} placeholder="Number" />
-                  </EditorBlock>
-                  <EditorBlock label="Weight">
-                    <Input value={valueOf(draft, "weight")} onChange={(event) => setField("weight", event.target.value)} placeholder="Weight" />
-                  </EditorBlock>
-                  <EditorBlock label="Date">
-                    <Input value={valueOf(draft, "examDateText")} onChange={(event) => setField("examDateText", event.target.value)} placeholder="Date" />
-                  </EditorBlock>
-                  <EditorBlock label="MFC Reason">
-                    <Input value={valueOf(draft, "mfcReason")} onChange={(event) => setField("mfcReason", event.target.value)} placeholder="MFC Reason" />
-                  </EditorBlock>
-                </div>
-              ) : null}
-
-              {activeSection === "reports" ? (
-                <div className="grid gap-4">
-                  <EditorBlock label="Blood Test">
-                    <Textarea value={valueOf(draft, "bloodTest")} rows={5} onChange={(event) => setField("bloodTest", event.target.value)} placeholder="Blood Test" />
-                  </EditorBlock>
-                  <EditorBlock label="Blood Result">
-                    <Input value={valueOf(draft, "bloodResult")} onChange={(event) => setField("bloodResult", event.target.value)} placeholder="Blood Result" />
-                  </EditorBlock>
-                  <EditorBlock label="MRI Test">
-                    <Textarea value={valueOf(draft, "mriTest")} rows={9} onChange={(event) => setField("mriTest", event.target.value)} placeholder="MRI Test" />
-                  </EditorBlock>
-                  <EditorBlock label="MRI Result">
-                    <Input value={valueOf(draft, "mriResult")} onChange={(event) => setField("mriResult", event.target.value)} placeholder="MRI Result" />
-                  </EditorBlock>
-                  <EditorBlock label="Eye Test">
-                    <Textarea value={valueOf(draft, "eyeTest")} rows={5} onChange={(event) => setField("eyeTest", event.target.value)} placeholder="Eye Test" />
-                  </EditorBlock>
-                  <EditorBlock label="Eye Result">
-                    <Input value={valueOf(draft, "eyeResult")} onChange={(event) => setField("eyeResult", event.target.value)} placeholder="Eye Result" />
-                  </EditorBlock>
-                </div>
-              ) : null}
-
-              {activeSection === "officer" ? (
-                <div className="grid gap-4">
-                  <EditorBlock label="Description">
-                    <Textarea value={valueOf(draft, "finalSummary")} rows={6} onChange={(event) => setField("finalSummary", event.target.value)} placeholder="Description" />
-                  </EditorBlock>
-                  <EditorBlock label="Medical Officer Name">
-                    <Input value={valueOf(draft, "officerName")} onChange={(event) => setField("officerName", event.target.value)} placeholder="Medical Officer Name" />
-                  </EditorBlock>
-                  <EditorBlock label="Medical Officer Signature">
-                    <Input value={valueOf(draft, "officerSignature")} onChange={(event) => setField("officerSignature", event.target.value)} placeholder="Medical Officer Signature" />
-                  </EditorBlock>
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
-
-          <PrintVersionsPanel documentType="mfc" documentId={id} />
-        </div>
+        <PrintVersionsPanel documentType="mfc" documentId={id} />
       </div>
     </DoctorPageShell>
   );
