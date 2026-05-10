@@ -146,7 +146,7 @@ function renderResultBadge(x: number, y: number, width: number, height: number, 
   `;
 }
 
-export function renderMfcSvg(input: Record<string, unknown>): string {
+export function renderMfcSvg(input: Record<string, unknown>, pageNumber?: 1 | 2): string {
   const fields = applicantFields(input);
   const fieldMap = Object.fromEntries(fields) as Record<string, string>;
   const bloodLines = wrapText(
@@ -202,8 +202,13 @@ export function renderMfcSvg(input: Record<string, unknown>): string {
   const secondPhotoY = page2Y + 170;
   const descriptionY = page2Y + 474;
   const descriptionBlockHeight = 214;
+  const rootWidth = pageNumber ? pageWidth : canvasWidth;
+  const rootHeight = pageNumber ? pageHeight : page2Y + pageHeight + pageGap;
+  const viewBox = pageNumber
+    ? `${pageX} ${pageNumber === 1 ? page1Y : page2Y} ${pageWidth} ${pageHeight}`
+    : `0 0 ${canvasWidth} ${page2Y + pageHeight + pageGap}`;
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${page2Y + pageHeight + pageGap}" viewBox="0 0 ${canvasWidth} ${page2Y + pageHeight + pageGap}">
+<svg xmlns="http://www.w3.org/2000/svg" width="${rootWidth}" height="${rootHeight}" viewBox="${viewBox}">
   <rect width="${canvasWidth}" height="${page2Y + pageHeight + pageGap}" fill="#ffffff"/>
   <rect x="${pageX}" y="${page1Y}" width="${pageWidth}" height="${pageHeight}" fill="#ffffff"/>
   <rect x="${pageX}" y="${page2Y}" width="${pageWidth}" height="${pageHeight}" fill="#ffffff"/>

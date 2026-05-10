@@ -377,6 +377,17 @@ async function loadDocumentPayload(documentType: string, documentId: number) {
   return null;
 }
 
+async function loadDocumentPageSvg(documentType: string, documentId: number, pageNumber: number) {
+  if (documentType === "mfc") {
+    const [row] = await db.select().from(mfcCasesTable).where(eq(mfcCasesTable.id, documentId)).limit(1);
+    if (!row) return null;
+    if (pageNumber !== 1 && pageNumber !== 2) return null;
+    return renderMfcSvg(row as unknown as Record<string, unknown>, pageNumber as 1 | 2);
+  }
+  const document = await loadDocumentPayload(documentType, documentId);
+  return document?.svg ?? null;
+}
+
 function isMissingPrintVersionTableError(error: unknown) {
   const code = typeof error === "object" && error !== null ? (error as { code?: string }).code : undefined;
   const message = error instanceof Error ? error.message : String(error ?? "");
@@ -385,6 +396,14 @@ function isMissingPrintVersionTableError(error: unknown) {
 
 function buildDocumentImageUrl(req: import("express").Request, documentType: string, documentId: number) {
   return buildAbsoluteUrl(req, `/api/documents/${documentType}/${documentId}/image.svg`);
+}
+
+function buildDocumentPageImageUrls(req: import("express").Request, documentType: string, documentId: number) {
+  if (documentType !== "mfc") return [];
+  return [1, 2].map((page) => ({
+    page,
+    url: buildAbsoluteUrl(req, `/api/documents/${documentType}/${documentId}/page/${page}`),
+  }));
 }
 
 async function createPrintVersion(req: import("express").Request, documentType: string, documentId: number) {
@@ -408,7 +427,14 @@ async function createPrintVersion(req: import("express").Request, documentType: 
 
     const directUrl = buildAbsoluteUrl(req, `/api/print-versions/${inserted.id}/image.svg`);
     await db.update(documentPrintVersionsTable).set({ directUrl }).where(eq(documentPrintVersionsTable.id, inserted.id));
-    return { id: inserted.id, directUrl, externalImageUrl: req.body?.externalImageUrl ?? null, versionNumber, persisted: true };
+    return {
+      id: inserted.id,
+      directUrl,
+      externalImageUrl: req.body?.externalImageUrl ?? null,
+      versionNumber,
+      persisted: true,
+      pageLinks: buildDocumentPageImageUrls(req, documentType, documentId),
+    };
   } catch (error) {
     if (!isMissingPrintVersionTableError(error)) {
       throw error;
@@ -421,6 +447,7 @@ async function createPrintVersion(req: import("express").Request, documentType: 
       externalImageUrl: req.body?.externalImageUrl ?? null,
       versionNumber: 1,
       persisted: false,
+      pageLinks: buildDocumentPageImageUrls(req, documentType, documentId),
     };
   }
 }
@@ -947,7 +974,16 @@ router.get("/documents/:type/:id/print-versions", requireDoctorAuth, async (req,
       .from(documentPrintVersionsTable)
       .where(and(eq(documentPrintVersionsTable.documentType, documentType), eq(documentPrintVersionsTable.documentId, documentId)))
       .orderBy(desc(documentPrintVersionsTable.versionNumber));
-    return res.json(rows.map((row) => ({ ...row, createdAt: row.createdAt.toISOString() })));
+    return res.json(rows.map((row) => ({
+      ...row,
+      createdAt: row.createdAt.toISOString(),
+      pageLinks: documentType === "mfc"
+        ? [1, 2].map((page) => ({
+            page,
+            url: buildAbsoluteUrl(req, `/api/documents/${documentType}/${documentId}/page/${page}`),
+          }))
+        : [],
+    })));
   } catch (error) {
     if (isMissingPrintVersionTableError(error)) {
       return res.json([]);
@@ -981,6 +1017,18 @@ router.get("/documents/:type/:id/image.svg", async (req, res) => {
   res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=300");
   return res.send(document.svg);
+});
+
+router.get("/documents/:type/:id/page/:page", async (req, res) => {
+  const documentType = String(req.params.type);
+  const documentId = Number(req.params.id);
+  const pageNumber = Number(req.params.page);
+  const svg = await loadDocumentPageSvg(documentType, documentId, pageNumber);
+  if (!svg) return res.status(404).send("Not found");
+
+  res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=300");
+  return res.send(svg);
 });
 
 router.get("/print-versions/:id/image.svg", async (req, res) => {

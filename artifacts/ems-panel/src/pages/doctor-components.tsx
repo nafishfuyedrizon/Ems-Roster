@@ -26,6 +26,7 @@ export function PrintVersionsPanel({ documentType, documentId }: { documentType:
   const { toast } = useToast();
   const [externalImageUrl, setExternalImageUrl] = useState("");
   const [latestGeneratedUrl, setLatestGeneratedUrl] = useState<string | null>(null);
+  const [latestPageLinks, setLatestPageLinks] = useState<Array<{ page: number; url: string }>>([]);
 
   const { data } = useQuery<any[]>({
     queryKey: ["print-versions", documentType, documentId],
@@ -34,11 +35,12 @@ export function PrintVersionsPanel({ documentType, documentId }: { documentType:
 
   const generateVersion = async () => {
     try {
-      const response = await doctorFetch<{ directUrl: string; persisted?: boolean }>(`/documents/${documentType}/${documentId}/print-version`, {
+      const response = await doctorFetch<{ directUrl: string; persisted?: boolean; pageLinks?: Array<{ page: number; url: string }> }>(`/documents/${documentType}/${documentId}/print-version`, {
         method: "POST",
         body: JSON.stringify({ externalImageUrl: externalImageUrl || null }),
       });
       setLatestGeneratedUrl(response.directUrl);
+      setLatestPageLinks(response.pageLinks ?? []);
       await queryClient.invalidateQueries({ queryKey: ["print-versions", documentType, documentId] });
       toast({
         title: response.persisted === false ? "Direct print link generated" : "Print version generated",
@@ -68,6 +70,15 @@ export function PrintVersionsPanel({ documentType, documentId }: { documentType:
             <a href={latestGeneratedUrl} target="_blank" rel="noreferrer" className="mt-1 block break-all text-xs text-primary underline">
               {latestGeneratedUrl}
             </a>
+            {latestPageLinks.length > 0 ? (
+              <div className="mt-3 space-y-2">
+                {latestPageLinks.map((link) => (
+                  <a key={link.page} href={link.url} target="_blank" rel="noreferrer" className="block break-all text-xs text-cyan-400 underline">
+                    {`Page ${link.page} link: ${link.url}`}
+                  </a>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
         <div className="space-y-3">
@@ -81,6 +92,15 @@ export function PrintVersionsPanel({ documentType, documentId }: { documentType:
                 <a href={version.externalImageUrl} target="_blank" rel="noreferrer" className="mt-1 block break-all text-xs text-cyan-400 underline">
                   {version.externalImageUrl}
                 </a>
+              ) : null}
+              {Array.isArray(version.pageLinks) && version.pageLinks.length > 0 ? (
+                <div className="mt-2 space-y-1">
+                  {version.pageLinks.map((link: { page: number; url: string }) => (
+                    <a key={link.page} href={link.url} target="_blank" rel="noreferrer" className="block break-all text-xs text-cyan-400 underline">
+                      {`Page ${link.page} link: ${link.url}`}
+                    </a>
+                  ))}
+                </div>
               ) : null}
             </div>
           ))}
