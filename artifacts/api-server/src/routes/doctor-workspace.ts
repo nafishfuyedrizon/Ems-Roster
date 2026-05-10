@@ -639,7 +639,7 @@ router.post("/mfc-cases", requireDoctorAuth, async (req, res) => {
       eyeResult: req.body?.eyeResult ?? null,
       finalSummary: req.body?.finalSummary ?? null,
       officerName: req.body?.officerName ?? session.name,
-      officerSignature: req.body?.officerSignature ?? session.callSign,
+      officerSignature: req.body?.officerSignature ?? session.name,
       sourceAttachmentUrl: req.body?.sourceAttachmentUrl ?? null,
       priceAmount: mfcPrice?.amount ?? 3000,
       status: "draft",

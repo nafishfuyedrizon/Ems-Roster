@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
-import { DoctorPageShell } from "@/pages/doctor-shared";
+import { DoctorPageShell, useDoctorGuard } from "@/pages/doctor-shared";
 import { doctorFetch } from "@/lib/doctor-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { PrintVersionsPanel } from "@/pages/doctor-components";
+import type { DoctorSession } from "@/hooks/use-doctor-auth";
 
 const DEFAULT_BLOOD_TEST = [
   "Red blood Cells (RBC)- 4.35 to 5.65(Man),3.92 to 5.13(Women)",
@@ -34,6 +35,44 @@ type MfcDraft = Record<string, string>;
 
 function valueOf(draft: MfcDraft, field: string, fallback = ""): string {
   return draft[field] ?? fallback;
+}
+
+function createSignatureText(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .join(" ");
+}
+
+function shouldUseLoggedInOfficer(value: string, doctor: DoctorSession | null): boolean {
+  if (!doctor) return !value.trim();
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  const normalized = trimmed.toLowerCase();
+  const doctorName = doctor.name.trim().toLowerCase();
+  const doctorUser = doctor.username.trim().toLowerCase();
+  const doctorCallSign = doctor.callSign.trim().toLowerCase();
+  if (normalized === doctorName || normalized === doctorUser || normalized === doctorCallSign) return true;
+  if (/^[a-z0-9_]+$/i.test(trimmed) || trimmed.includes("_")) return true;
+  return false;
+}
+
+function resolveOfficerName(rawValue: unknown, doctor: DoctorSession | null): string {
+  const value = String(rawValue ?? "").trim();
+  if (shouldUseLoggedInOfficer(value, doctor) && doctor?.name) {
+    return doctor.name;
+  }
+  return value;
+}
+
+function resolveOfficerSignature(rawValue: unknown, doctor: DoctorSession | null, officerName: string): string {
+  const value = String(rawValue ?? "").trim();
+  if (shouldUseLoggedInOfficer(value, doctor) && doctor?.name) {
+    return createSignatureText(doctor.name);
+  }
+  if (!value && officerName) return createSignatureText(officerName);
+  return value;
 }
 
 function CertificateMark({ className = "" }: { className?: string }) {
@@ -153,6 +192,7 @@ export default function DoctorMfcDetail() {
   const queryClient = useQueryClient();
   const [, params] = useRoute("/doctor/mfc/:id");
   const id = Number(params?.id);
+  const { doctor } = useDoctorGuard();
   const { data } = useQuery<any>({
     queryKey: ["doctor-mfc-detail", id],
     queryFn: () => doctorFetch(`/mfc-cases/${id}`),
@@ -162,6 +202,8 @@ export default function DoctorMfcDetail() {
 
   useEffect(() => {
     if (!data) return;
+    const officerName = resolveOfficerName(data.officerName, doctor);
+    const officerSignature = resolveOfficerSignature(data.officerSignature, doctor, officerName);
     setDraft({
       applicantName: data.applicantName ?? "",
       cid: data.cid ?? "",
@@ -170,8 +212,8 @@ export default function DoctorMfcDetail() {
       number: data.number ?? "",
       weight: data.weight ?? "",
       examDateText: data.examDateText ?? "",
-      officerName: data.officerName ?? "",
-      officerSignature: data.officerSignature ?? "",
+      officerName,
+      officerSignature,
       sourceAttachmentUrl: data.sourceAttachmentUrl ?? "",
       mfcReason: data.mfcReason ?? "",
       bloodTest: data.bloodTest || DEFAULT_BLOOD_TEST,
@@ -182,18 +224,33 @@ export default function DoctorMfcDetail() {
       eyeResult: data.eyeResult || "ALL GOOD",
       finalSummary: data.finalSummary || DEFAULT_DESCRIPTION,
     });
-  }, [data]);
+  }, [data, doctor]);
 
   const setField = (field: string, value: string) => {
     setDraft((prev) => ({ ...prev, [field]: value }));
   };
 
+  const buildDraftPayload = () => {
+    const officerName = valueOf(draft, "officerName").trim() || doctor?.name || "";
+    const officerSignature = valueOf(draft, "officerSignature").trim() || createSignatureText(officerName);
+    return {
+      ...draft,
+      officerName,
+      officerSignature,
+    };
+  };
+
   const save = async () => {
-    await doctorFetch(`/mfc-cases/${id}`, { method: "PATCH", body: JSON.stringify(draft) });
+    const payload = buildDraftPayload();
+    setDraft(payload);
+    await doctorFetch(`/mfc-cases/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
     await queryClient.invalidateQueries({ queryKey: ["doctor-mfc-detail", id] });
   };
 
   const complete = async () => {
+    const payload = buildDraftPayload();
+    setDraft(payload);
+    await doctorFetch(`/mfc-cases/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
     await doctorFetch(`/mfc-cases/${id}/complete`, { method: "POST" });
     await queryClient.invalidateQueries({ queryKey: ["doctor-mfc-detail", id] });
   };
@@ -261,7 +318,8 @@ export default function DoctorMfcDetail() {
                 <Input
                   value={valueOf(draft, "officerSignature")}
                   onChange={(event) => setField("officerSignature", event.target.value)}
-                  className="inline-flex h-8 w-[280px] rounded-none border-0 border-b border-slate-300 bg-transparent px-0 align-middle text-[15px] font-medium text-slate-900 shadow-none focus-visible:ring-0"
+                  className="inline-flex h-10 w-[320px] rounded-none border-0 border-b border-slate-300 bg-transparent px-0 align-middle text-slate-900 shadow-none focus-visible:ring-0"
+                  style={{ fontFamily: "'Segoe Script', 'Brush Script MT', 'Segoe Print', cursive", fontSize: "28px", fontWeight: 500 }}
                 />
               </div>
             </div>
@@ -311,7 +369,8 @@ export default function DoctorMfcDetail() {
                   <Input
                     value={valueOf(draft, "officerSignature")}
                     onChange={(event) => setField("officerSignature", event.target.value)}
-                    className="inline-flex h-8 w-[280px] rounded-none border-0 border-b border-slate-300 bg-transparent px-0 align-middle text-[15px] font-medium text-slate-900 shadow-none focus-visible:ring-0"
+                    className="inline-flex h-10 w-[320px] rounded-none border-0 border-b border-slate-300 bg-transparent px-0 align-middle text-slate-900 shadow-none focus-visible:ring-0"
+                    style={{ fontFamily: "'Segoe Script', 'Brush Script MT', 'Segoe Print', cursive", fontSize: "28px", fontWeight: 500 }}
                   />
                 </div>
               </div>
