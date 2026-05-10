@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { doctorFetch } from "@/lib/doctor-api";
+import { withApiPath } from "@/lib/api-base";
 import { useToast } from "@/hooks/use-toast";
 
 export function DoctorStatCard({ label, value, subtext }: { label: string; value: string | number; subtext?: string }) {
@@ -51,6 +52,12 @@ export function PrintVersionsPanel({ documentType, documentId }: { documentType:
     }
   };
 
+  const buildPageDownloadUrl = (page: number) =>
+    `${withApiPath(`/documents/${documentType}/${documentId}/page/${page}`)}?download=1`;
+
+  const buildCombinedDownloadUrl = () =>
+    `${withApiPath(`/documents/${documentType}/${documentId}/image.svg`)}?download=1`;
+
   return (
     <Card className="border-border/50 bg-card/50">
       <CardHeader>
@@ -64,6 +71,20 @@ export function PrintVersionsPanel({ documentType, documentId }: { documentType:
         <Button onClick={() => void generateVersion()} className="font-mono uppercase tracking-widest">
           Generate Print Version
         </Button>
+        {documentType === "mfc" ? (
+          <div className="grid gap-2">
+            <Button asChild variant="outline" className="font-mono uppercase tracking-widest">
+              <a href={buildPageDownloadUrl(1)}>Download Page 1</a>
+            </Button>
+            <Button asChild variant="outline" className="font-mono uppercase tracking-widest">
+              <a href={buildPageDownloadUrl(2)}>Download Page 2</a>
+            </Button>
+          </div>
+        ) : (
+          <Button asChild variant="outline" className="font-mono uppercase tracking-widest">
+            <a href={buildCombinedDownloadUrl()}>Download File</a>
+          </Button>
+        )}
         {latestGeneratedUrl ? (
           <div className="rounded-lg border border-border/40 bg-background/40 p-3">
             <p className="text-sm font-semibold">Latest generated link</p>

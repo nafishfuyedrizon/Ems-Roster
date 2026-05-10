@@ -1016,6 +1016,9 @@ router.get("/documents/:type/:id/image.svg", async (req, res) => {
 
   res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=300");
+  if (req.query.download !== undefined) {
+    res.setHeader("Content-Disposition", `attachment; filename=\"${documentType}-${documentId}.svg\"`);
+  }
   return res.send(document.svg);
 });
 
@@ -1028,6 +1031,9 @@ router.get("/documents/:type/:id/page/:page", async (req, res) => {
 
   res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=300");
+  if (req.query.download !== undefined) {
+    res.setHeader("Content-Disposition", `attachment; filename=\"${documentType}-${documentId}-page-${pageNumber}.svg\"`);
+  }
   return res.send(svg);
 });
 
@@ -1040,6 +1046,9 @@ router.get("/print-versions/:id/image.svg", async (req, res) => {
 
   res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=300");
+  if (req.query.download !== undefined) {
+    res.setHeader("Content-Disposition", `attachment; filename=\"${version.documentType}-${version.documentId}-version-${version.versionNumber}.svg\"`);
+  }
   return res.send(document.svg);
 });
 
