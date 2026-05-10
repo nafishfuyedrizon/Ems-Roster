@@ -71,6 +71,41 @@ function renderApplicantBlock(fields: Array<[string, string]>, startX: number, s
     .join("");
 }
 
+function renderApplicantColumn(fields: Array<[string, string]>, startX: number, startY: number): string {
+  return fields
+    .map(([label, value], index) => {
+      const y = startY + index * 44;
+      return `<text x="${startX}" y="${y}" font-size="18" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">${esc(label)}: ${esc(value)}</text>`;
+    })
+    .join("");
+}
+
+function renderMountZonahMark(x: number, y: number, size: number): string {
+  const scale = size / 100;
+  return `<g transform="translate(${x}, ${y}) scale(${scale})">
+    <path d="M50 10 58 33 82 18 68 40 92 50 68 60 82 82 58 67 50 90 42 67 18 82 32 60 8 50 32 40 18 18 42 33Z" fill="#9fe3ff" stroke="#0d6db8" stroke-width="3"/>
+    <circle cx="50" cy="50" r="12" fill="#fff" stroke="#0d6db8" stroke-width="3"/>
+  </g>`;
+}
+
+function renderPhotoFrame(x: number, y: number, width: number, height: number, imageUrl: string): string {
+  const safeUrl = esc(imageUrl);
+  if (safeUrl) {
+    return `
+    <rect x="${x}" y="${y}" width="${width}" height="${height}" rx="10" fill="#fff" stroke="#111827" stroke-width="2"/>
+    <image href="${safeUrl}" x="${x + 8}" y="${y + 8}" width="${width - 16}" height="${height - 16}" preserveAspectRatio="xMidYMid slice"/>
+    `;
+  }
+  return `
+    <rect x="${x}" y="${y}" width="${width}" height="${height}" rx="10" fill="#fff" stroke="#111827" stroke-width="2"/>
+    <circle cx="${x + width / 2}" cy="${y + height / 2}" r="66" fill="none" stroke="#111827" stroke-width="6"/>
+    <rect x="${x + width / 2 - 42}" y="${y + height / 2 - 26}" width="84" height="52" fill="none" stroke="#111827" stroke-width="6"/>
+    <path d="M${x + width / 2 - 28} ${y + height / 2 + 20}l20-28 16 16 10-12 20 24" fill="none" stroke="#111827" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="${x + width / 2 + 18}" cy="${y + height / 2 - 8}" r="7" fill="#111827"/>
+    <path d="M${x + width / 2 + 12} ${y + height / 2 + 42}h28M${x + width / 2 + 26} ${y + height / 2 + 28}v28" stroke="#111827" stroke-width="6" stroke-linecap="round"/>
+  `;
+}
+
 export function renderMfcSvg(input: Record<string, unknown>): string {
   const fields = applicantFields(input);
   const bloodLines = wrapText(
@@ -106,16 +141,20 @@ export function renderMfcSvg(input: Record<string, unknown>): string {
   const mriTop = bloodTop + bloodHeight;
   const eyeTop = mriTop + mriHeight;
   const totalTableHeight = bloodHeight + mriHeight + eyeHeight;
+  const photoUrl = String(input.sourceAttachmentUrl ?? "");
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1400" height="2520" viewBox="0 0 1400 2520">
   <rect width="1400" height="2520" fill="#ece7dc"/>
   <rect x="56" y="50" width="1288" height="1180" fill="#fffef9" stroke="#111827" stroke-width="2.6"/>
   <rect x="56" y="${page2Top}" width="1288" height="1140" fill="#fffef9" stroke="#111827" stroke-width="2.6"/>
 
+  ${renderMountZonahMark(176, 132, 84)}
+  ${renderMountZonahMark(1138, 132, 84)}
   <text x="700" y="132" text-anchor="middle" font-size="44" font-weight="800" letter-spacing="8" fill="#111827" font-family="'Times New Roman', serif">MOUNT ZONAH</text>
   <text x="700" y="184" text-anchor="middle" font-size="28" font-weight="700" letter-spacing="4" fill="#111827" font-family="'Times New Roman', serif">MEDICAL FITNESS CERTIFICATE</text>
   <text x="108" y="248" font-size="28" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">Applicant Information</text>
-  ${renderApplicantBlock(fields, 108, 314)}
+  ${renderApplicantColumn(fields, 108, 314)}
+  ${renderPhotoFrame(875, 286, 250, 250, photoUrl)}
 
   <text x="108" y="498" font-size="26" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">Test Reports:</text>
   <rect x="108" y="530" width="${tableWidth}" height="${totalTableHeight}" fill="none" stroke="#111827" stroke-width="1.6"/>
@@ -141,10 +180,13 @@ export function renderMfcSvg(input: Record<string, unknown>): string {
 
   <text x="108" y="1180" font-size="22" fill="#111827" font-family="'Segoe UI', sans-serif">Signature of Medical Officer: ${esc(String(input.officerSignature ?? "N/a"))}</text>
 
+  ${renderMountZonahMark(176, page2Top + 82, 84)}
+  ${renderMountZonahMark(1138, page2Top + 82, 84)}
   <text x="700" y="${page2Top + 82}" text-anchor="middle" font-size="44" font-weight="800" letter-spacing="8" fill="#111827" font-family="'Times New Roman', serif">MOUNT ZONAH</text>
   <text x="700" y="${page2Top + 134}" text-anchor="middle" font-size="28" font-weight="700" letter-spacing="4" fill="#111827" font-family="'Times New Roman', serif">MEDICAL FITNESS CERTIFICATE</text>
   <text x="108" y="${page2Top + 198}" font-size="28" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">Applicant Information</text>
-  ${renderApplicantBlock(fields, 108, page2Top + 264)}
+  ${renderApplicantColumn(fields, 108, page2Top + 264)}
+  ${renderPhotoFrame(875, page2Top + 236, 250, 250, photoUrl)}
 
   ${textLines(108, page2Top + 590, wrapText(`Description: ${String(input.finalSummary ?? "N/a")}`, 100), { size: 22, color: "#1f2937", lineHeight: 34 })}
   <text x="108" y="${page2Top + 834}" font-size="22" fill="#111827" font-family="'Segoe UI', sans-serif">Name of Medical Officer: ${esc(String(input.officerName ?? "N/a"))}</text>

@@ -635,14 +635,15 @@ router.post("/mfc-cases", requireDoctorAuth, async (req, res) => {
     bloodResult: req.body?.bloodResult ?? null,
     mriTest: req.body?.mriTest ?? null,
     mriResult: req.body?.mriResult ?? null,
-    eyeTest: req.body?.eyeTest ?? null,
-    eyeResult: req.body?.eyeResult ?? null,
-    finalSummary: req.body?.finalSummary ?? null,
-    officerName: req.body?.officerName ?? session.name,
-    officerSignature: req.body?.officerSignature ?? session.callSign,
-    priceAmount: mfcPrice?.amount ?? 3000,
-    status: "draft",
-  }).$returningId();
+      eyeTest: req.body?.eyeTest ?? null,
+      eyeResult: req.body?.eyeResult ?? null,
+      finalSummary: req.body?.finalSummary ?? null,
+      officerName: req.body?.officerName ?? session.name,
+      officerSignature: req.body?.officerSignature ?? session.callSign,
+      sourceAttachmentUrl: req.body?.sourceAttachmentUrl ?? null,
+      priceAmount: mfcPrice?.amount ?? 3000,
+      status: "draft",
+    }).$returningId();
   await createMfcEvent(inserted.id, "created", "doctor", session.callSign, "MFC case created");
   return res.status(201).json({ id: inserted.id });
 });
@@ -658,7 +659,7 @@ router.patch("/mfc-cases/:id", requireDoctorAuth, async (req, res) => {
   const id = Number(req.params.id);
   const session = doctorActor(req);
   const updateData: Partial<typeof mfcCasesTable.$inferInsert> = { updatedAt: new Date() };
-  const keys = ["sex", "templateVariant", "applicantName", "cid", "number", "weight", "dateOfBirth", "mfcReason", "examDateText", "bloodTest", "bloodResult", "mriTest", "mriResult", "eyeTest", "eyeResult", "finalSummary", "officerName", "officerSignature", "status"] as const;
+  const keys = ["sex", "templateVariant", "applicantName", "cid", "number", "weight", "dateOfBirth", "mfcReason", "examDateText", "bloodTest", "bloodResult", "mriTest", "mriResult", "eyeTest", "eyeResult", "finalSummary", "officerName", "officerSignature", "sourceAttachmentUrl", "status"] as const;
   for (const key of keys) {
     if (req.body?.[key] !== undefined) (updateData as any)[key] = req.body[key];
   }
