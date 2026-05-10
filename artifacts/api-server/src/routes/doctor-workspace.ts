@@ -667,7 +667,11 @@ router.post("/mfc-cases", requireDoctorAuth, async (req, res) => {
       priceAmount: mfcPrice?.amount ?? 3000,
       status: "draft",
     }).$returningId();
-    await createMfcEvent(inserted.id, "created", "doctor", session.callSign, "MFC case created");
+    try {
+      await createMfcEvent(inserted.id, "created", "doctor", session.callSign, "MFC case created");
+    } catch (eventError) {
+      console.warn("[DOCTOR-MFC] Event log write failed during create; continuing.", eventError);
+    }
     return res.status(201).json({ id: inserted.id });
   } catch (error) {
     console.error("[DOCTOR-MFC] Failed to create MFC case:", error);
@@ -694,7 +698,11 @@ router.patch("/mfc-cases/:id", requireDoctorAuth, async (req, res) => {
     if (req.body?.[key] !== undefined) (updateData as any)[key] = req.body[key];
   }
   await db.update(mfcCasesTable).set(updateData).where(eq(mfcCasesTable.id, id));
-  await createMfcEvent(id, "updated", "doctor", session.callSign, "MFC case updated");
+  try {
+    await createMfcEvent(id, "updated", "doctor", session.callSign, "MFC case updated");
+  } catch (eventError) {
+    console.warn("[DOCTOR-MFC] Event log write failed during update; continuing.", eventError);
+  }
   return res.status(204).send();
 });
 
@@ -702,7 +710,11 @@ router.post("/mfc-cases/:id/complete", requireDoctorAuth, async (req, res) => {
   const id = Number(req.params.id);
   const session = doctorActor(req);
   await db.update(mfcCasesTable).set({ status: "completed", completedAt: new Date(), updatedAt: new Date() }).where(eq(mfcCasesTable.id, id));
-  await createMfcEvent(id, "completed", "doctor", session.callSign, "MFC case completed");
+  try {
+    await createMfcEvent(id, "completed", "doctor", session.callSign, "MFC case completed");
+  } catch (eventError) {
+    console.warn("[DOCTOR-MFC] Event log write failed during complete; continuing.", eventError);
+  }
   return res.status(204).send();
 });
 
