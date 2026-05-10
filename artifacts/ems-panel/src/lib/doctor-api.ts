@@ -1,13 +1,9 @@
 import { API_BASE } from "@/lib/api-base";
+import { readApiError } from "@/lib/read-api-error";
 
 async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    let message = "Request failed";
-    try {
-      const json = await response.json();
-      message = json.error ?? json.message ?? message;
-    } catch {}
-    throw new Error(message);
+    throw new Error(await readApiError(response));
   }
   if (response.status === 204) {
     return undefined as T;

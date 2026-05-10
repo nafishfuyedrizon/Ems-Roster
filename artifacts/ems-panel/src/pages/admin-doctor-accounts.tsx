@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE } from "@/lib/api-base";
+import { readApiError } from "@/lib/read-api-error";
 
 export default function AdminDoctorAccounts() {
   const queryClient = useQueryClient();
@@ -16,7 +17,7 @@ export default function AdminDoctorAccounts() {
     queryKey: ["doctor-accounts-admin"],
     queryFn: async () => {
       const response = await fetch(`${API_BASE}/doctor-accounts`);
-      if (!response.ok) throw new Error("Failed to load doctor accounts");
+      if (!response.ok) throw new Error(await readApiError(response, "Failed to load doctor accounts"));
       return response.json();
     },
   });
@@ -35,7 +36,7 @@ export default function AdminDoctorAccounts() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ memberId: Number(memberId), username, password }),
       }).then(async (response) => {
-        if (!response.ok) throw new Error((await response.json()).error ?? "Failed to create account");
+        if (!response.ok) throw new Error(await readApiError(response, "Failed to create account"));
       });
       toast({ title: "Doctor account created" });
       setMemberId("");
@@ -48,12 +49,17 @@ export default function AdminDoctorAccounts() {
   };
 
   const toggleActive = async (id: number, isActive: boolean) => {
-    await fetch(`${API_BASE}/doctor-accounts/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive }),
-    });
-    await reload();
+    try {
+      const response = await fetch(`${API_BASE}/doctor-accounts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive }),
+      });
+      if (!response.ok) throw new Error(await readApiError(response, "Failed to update account"));
+      await reload();
+    } catch (error) {
+      toast({ title: "Failed to update account", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
+    }
   };
 
   const resetPassword = async (id: number) => {
@@ -63,7 +69,7 @@ export default function AdminDoctorAccounts() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: resetPasswords[id] }),
       }).then(async (response) => {
-        if (!response.ok) throw new Error((await response.json()).error ?? "Failed to reset password");
+        if (!response.ok) throw new Error(await readApiError(response, "Failed to reset password"));
       });
       toast({ title: "Password reset successful" });
       setResetPasswords((prev) => ({ ...prev, [id]: "" }));
