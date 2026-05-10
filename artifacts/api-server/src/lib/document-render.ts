@@ -10,37 +10,146 @@ function linesBlock(lines: string[], startY: number, lineHeight = 28): string {
   return lines.map((line, index) => `<text x="70" y="${startY + index * lineHeight}" font-size="20" fill="#222" font-family="'Segoe UI', sans-serif">${esc(line)}</text>`).join("");
 }
 
+function wrapText(input: string, maxChars: number): string[] {
+  const lines: string[] = [];
+  for (const paragraph of String(input || "").split("\n")) {
+    const words = paragraph.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+      lines.push("");
+      continue;
+    }
+    let current = "";
+    for (const word of words) {
+      const next = current ? `${current} ${word}` : word;
+      if (next.length > maxChars && current) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = next;
+      }
+    }
+    if (current) lines.push(current);
+  }
+  return lines.length > 0 ? lines : [""];
+}
+
+function textLines(x: number, y: number, lines: string[], options?: { size?: number; weight?: number | string; color?: string; lineHeight?: number; anchor?: string }): string {
+  const size = options?.size ?? 20;
+  const color = options?.color ?? "#222";
+  const lineHeight = options?.lineHeight ?? Math.round(size * 1.55);
+  const anchor = options?.anchor ? ` text-anchor="${options.anchor}"` : "";
+  const weight = options?.weight ? ` font-weight="${options.weight}"` : "";
+  const tspans = lines
+    .map((line, index) => `<tspan x="${x}" dy="${index === 0 ? 0 : lineHeight}">${esc(line)}</tspan>`)
+    .join("");
+  return `<text x="${x}" y="${y}" font-size="${size}" fill="${color}" font-family="'Segoe UI', sans-serif"${weight}${anchor}>${tspans}</text>`;
+}
+
+function applicantFields(input: Record<string, unknown>): Array<[string, string]> {
+  return [
+    ["Name", String(input.applicantName ?? "N/a")],
+    ["Sex", String(input.sex ?? "N/a")],
+    ["D.O.B", String(input.dateOfBirth ?? "N/a")],
+    ["CID", String(input.cid ?? "N/a")],
+    ["Number", String(input.number ?? "N/a")],
+    ["Weight", String(input.weight ?? "N/a")],
+    ["MFC Reason", String(input.mfcReason ?? "N/a")],
+    ["Date", String(input.examDateText ?? "N/a")],
+  ];
+}
+
+function renderApplicantBlock(fields: Array<[string, string]>, startX: number, startY: number): string {
+  return fields
+    .map(([label, value], index) => {
+      const x = index % 2 === 0 ? startX : startX + 540;
+      const y = startY + Math.floor(index / 2) * 72;
+      return `
+  <text x="${x}" y="${y}" font-size="22" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">${esc(label)}:</text>
+  <line x1="${x + 112}" y1="${y + 8}" x2="${x + 460}" y2="${y + 8}" stroke="#94a3b8" stroke-width="1.2"/>
+  <text x="${x + 126}" y="${y}" font-size="20" fill="#1f2937" font-family="'Segoe UI', sans-serif">${esc(value)}</text>`;
+    })
+    .join("");
+}
+
 export function renderMfcSvg(input: Record<string, unknown>): string {
-  const applicant = [
-    `Name: ${String(input.applicantName ?? "")}`,
-    `Sex: ${String(input.sex ?? "")}`,
-    `DOB: ${String(input.dateOfBirth ?? "")}`,
-    `CID: ${String(input.cid ?? "")}`,
-    `Number: ${String(input.number ?? "")}`,
-    `Weight: ${String(input.weight ?? "")}`,
-    `MFC Reason: ${String(input.mfcReason ?? "")}`,
-    `Date: ${String(input.examDateText ?? "")}`,
-  ];
-  const reports = [
-    `Blood Test: ${String(input.bloodTest ?? "")} ${String(input.bloodResult ?? "")}`.trim(),
-    `MRI Test: ${String(input.mriTest ?? "")} ${String(input.mriResult ?? "")}`.trim(),
-    `Eye Test: ${String(input.eyeTest ?? "")} ${String(input.eyeResult ?? "")}`.trim(),
-  ];
+  const fields = applicantFields(input);
+  const bloodLines = wrapText(
+    String(
+      input.bloodTest ??
+        "Red blood Cells (RBC)- 4.35 to 5.65(Man),3.92 to 5.13(Women)\nWhite Blood Cells (WBC)- 4500-11000/mm3\nPlatelets (PLT): 152 to 361",
+    ),
+    58,
+  );
+  const mriLines = wrapText(
+    String(
+      input.mriTest ??
+        "1. Extensive tissue loss in the right temporal/occipital region with ex vacuo prominence of the right lateral ventricle and Wallerian degeneration of the right cerebral peduncle.\n2. Subtle focal defects of periventricular white matter probably due to superimposed small vessel ischemic disease.\n3. Previous studies are kept from being made available for review. At such time that a previous study becomes available, an addendum will be issued.",
+    ),
+    58,
+  );
+  const eyeLines = wrapText(String(input.eyeTest ?? "Successfully Read All the Text In This Chart"), 58);
+  const summaryLines = wrapText(
+    String(
+      input.finalSummary ??
+        "I have examined and certified that he is free from deafness or any other infirmity, mental or physical, likely to interfere with the efficiency of his work and found to possess good health.",
+    ),
+    94,
+  );
+  const bloodHeight = Math.max(168, bloodLines.length * 32 + 68);
+  const mriHeight = Math.max(280, mriLines.length * 32 + 68);
+  const eyeHeight = Math.max(132, eyeLines.length * 32 + 68);
+  const resultX = 1068;
+  const contentX = 108;
+  const tableWidth = 1160;
+  const page2Top = 1320;
+  const bloodTop = 530;
+  const mriTop = bloodTop + bloodHeight;
+  const eyeTop = mriTop + mriHeight;
+  const totalTableHeight = bloodHeight + mriHeight + eyeHeight;
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1900" viewBox="0 0 1400 1900">
-  <rect width="1400" height="1900" fill="#f7f3ea"/>
-  <rect x="40" y="40" width="1320" height="1820" rx="28" fill="#fffdf8" stroke="#111827" stroke-width="4"/>
-  <text x="700" y="120" text-anchor="middle" font-size="46" font-weight="700" fill="#0f172a" font-family="'Segoe UI', sans-serif">MOUNT ZONAH</text>
-  <text x="700" y="175" text-anchor="middle" font-size="34" font-weight="700" fill="#0f172a" font-family="'Segoe UI', sans-serif">MEDICAL FITNESS CERTIFICATE</text>
-  <text x="70" y="245" font-size="28" font-weight="700" fill="#0f172a" font-family="'Segoe UI', sans-serif">Applicant Information</text>
-  ${linesBlock(applicant, 300, 42)}
-  <text x="70" y="700" font-size="28" font-weight="700" fill="#0f172a" font-family="'Segoe UI', sans-serif">Test Reports</text>
-  ${linesBlock(reports, 755, 48)}
-  <text x="70" y="1080" font-size="28" font-weight="700" fill="#0f172a" font-family="'Segoe UI', sans-serif">Final Summary</text>
-  ${linesBlock([String(input.finalSummary ?? "No summary provided.")], 1135, 42)}
-  <text x="70" y="1600" font-size="24" fill="#0f172a" font-family="'Segoe UI', sans-serif">Medical Officer: ${esc(String(input.officerName ?? ""))}</text>
-  <text x="70" y="1650" font-size="24" fill="#0f172a" font-family="'Segoe UI', sans-serif">Signature: ${esc(String(input.officerSignature ?? ""))}</text>
-  <text x="70" y="1810" font-size="18" fill="#475569" font-family="'Segoe UI', sans-serif">Generated by Legacy BD EMS Doctor Portal</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="2520" viewBox="0 0 1400 2520">
+  <rect width="1400" height="2520" fill="#ece7dc"/>
+  <rect x="56" y="50" width="1288" height="1180" fill="#fffef9" stroke="#111827" stroke-width="2.6"/>
+  <rect x="56" y="${page2Top}" width="1288" height="1140" fill="#fffef9" stroke="#111827" stroke-width="2.6"/>
+
+  <text x="700" y="132" text-anchor="middle" font-size="44" font-weight="800" letter-spacing="8" fill="#111827" font-family="'Times New Roman', serif">MOUNT ZONAH</text>
+  <text x="700" y="184" text-anchor="middle" font-size="28" font-weight="700" letter-spacing="4" fill="#111827" font-family="'Times New Roman', serif">MEDICAL FITNESS CERTIFICATE</text>
+  <text x="108" y="248" font-size="28" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">Applicant Information</text>
+  ${renderApplicantBlock(fields, 108, 314)}
+
+  <text x="108" y="498" font-size="26" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">Test Reports:</text>
+  <rect x="108" y="530" width="${tableWidth}" height="${totalTableHeight}" fill="none" stroke="#111827" stroke-width="1.6"/>
+  <line x1="${resultX}" y1="530" x2="${resultX}" y2="${530 + totalTableHeight}" stroke="#111827" stroke-width="1.4"/>
+  <line x1="108" y1="584" x2="${108 + tableWidth}" y2="584" stroke="#111827" stroke-width="1.4"/>
+  <text x="150" y="565" font-size="20" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">Report Title</text>
+  <text x="${resultX + 90}" y="565" text-anchor="middle" font-size="20" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">Result</text>
+
+  <line x1="108" y1="${bloodTop + bloodHeight}" x2="${108 + tableWidth}" y2="${bloodTop + bloodHeight}" stroke="#111827" stroke-width="1.2"/>
+  <line x1="108" y1="${mriTop + mriHeight}" x2="${108 + tableWidth}" y2="${mriTop + mriHeight}" stroke="#111827" stroke-width="1.2"/>
+
+  <text x="${contentX}" y="${bloodTop + 34}" font-size="20" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">Blood Test:</text>
+  ${textLines(contentX + 18, bloodTop + 74, bloodLines, { size: 18, color: "#1f2937", lineHeight: 30 })}
+  ${textLines(resultX + 90, bloodTop + bloodHeight / 2, wrapText(String(input.bloodResult ?? "ALL GOOD"), 12), { size: 20, color: "#166534", weight: 800, lineHeight: 28, anchor: "middle" })}
+
+  <text x="${contentX}" y="${mriTop + 34}" font-size="20" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">MRI Test:</text>
+  ${textLines(contentX + 18, mriTop + 74, mriLines, { size: 18, color: "#1f2937", lineHeight: 30 })}
+  ${textLines(resultX + 90, mriTop + mriHeight / 2, wrapText(String(input.mriResult ?? "ALL GOOD"), 12), { size: 20, color: "#166534", weight: 800, lineHeight: 28, anchor: "middle" })}
+
+  <text x="${contentX}" y="${eyeTop + 34}" font-size="20" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">Eye Test:</text>
+  ${textLines(contentX + 18, eyeTop + 74, eyeLines, { size: 18, color: "#1f2937", lineHeight: 30 })}
+  ${textLines(resultX + 90, eyeTop + eyeHeight / 2, wrapText(String(input.eyeResult ?? "ALL GOOD"), 12), { size: 20, color: "#166534", weight: 800, lineHeight: 28, anchor: "middle" })}
+
+  <text x="108" y="1180" font-size="22" fill="#111827" font-family="'Segoe UI', sans-serif">Signature of Medical Officer: ${esc(String(input.officerSignature ?? "N/a"))}</text>
+
+  <text x="700" y="${page2Top + 82}" text-anchor="middle" font-size="44" font-weight="800" letter-spacing="8" fill="#111827" font-family="'Times New Roman', serif">MOUNT ZONAH</text>
+  <text x="700" y="${page2Top + 134}" text-anchor="middle" font-size="28" font-weight="700" letter-spacing="4" fill="#111827" font-family="'Times New Roman', serif">MEDICAL FITNESS CERTIFICATE</text>
+  <text x="108" y="${page2Top + 198}" font-size="28" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">Applicant Information</text>
+  ${renderApplicantBlock(fields, 108, page2Top + 264)}
+
+  ${textLines(108, page2Top + 590, wrapText(`Description: ${String(input.finalSummary ?? "N/a")}`, 100), { size: 22, color: "#1f2937", lineHeight: 34 })}
+  <text x="108" y="${page2Top + 834}" font-size="22" fill="#111827" font-family="'Segoe UI', sans-serif">Name of Medical Officer: ${esc(String(input.officerName ?? "N/a"))}</text>
+  <text x="108" y="${page2Top + 894}" font-size="22" fill="#111827" font-family="'Segoe UI', sans-serif">Signature of Medical Officer: ${esc(String(input.officerSignature ?? "N/a"))}</text>
+  <text x="108" y="${page2Top + 1060}" font-size="18" fill="#64748b" font-family="'Segoe UI', sans-serif">Generated by Legacy BD EMS Doctor Portal</text>
 </svg>`;
 }
 
