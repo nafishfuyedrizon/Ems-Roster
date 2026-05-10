@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { DoctorPageShell, useDoctorGuard } from "@/pages/doctor-shared";
 import { doctorFetch } from "@/lib/doctor-api";
+import { withApiPath } from "@/lib/api-base";
+import { downloadRenderedDocxPage, renderDocxMfcPreview } from "@/lib/docx-mfc-render";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -602,21 +604,31 @@ export default function DoctorMfcDetail() {
   };
 
   const downloadDocxPreviewPage = async (page: 1 | 2) => {
+    const host = document.createElement("div");
+    host.className = "pointer-events-none fixed left-[-20000px] top-0 z-[-1]";
+    document.body.appendChild(host);
+
     try {
       const payload = buildDraftPayload();
       setDraft(payload);
       await doctorFetch(`/mfc-cases/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
-      const previewUrl = `${window.location.origin}/preview/mfc-docx/${id}?download=png&page=${page}`;
-      const previewWindow = window.open(previewUrl, "_blank", "noopener,noreferrer");
-      if (!previewWindow) {
-        window.location.href = previewUrl;
+
+      const response = await fetch(withApiPath(`/documents/mfc/${id}/template.docx`), { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`DOCX fetch failed with status ${response.status}`);
       }
+
+      const buffer = await response.arrayBuffer();
+      await renderDocxMfcPreview(host, buffer);
+      await downloadRenderedDocxPage(host, id, page);
     } catch (error) {
       toast({
         title: `Failed to download page ${page}`,
         description: error instanceof Error ? error.message : "Could not prepare the DOCX preview download.",
         variant: "destructive",
       });
+    } finally {
+      host.remove();
     }
   };
 
