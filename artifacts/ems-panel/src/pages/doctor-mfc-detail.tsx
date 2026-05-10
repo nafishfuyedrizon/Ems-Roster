@@ -554,6 +554,7 @@ export default function DoctorMfcDetail() {
   });
   const [draft, setDraft] = useState<MfcDraft>({});
   const [resolvedPhotoUrl, setResolvedPhotoUrl] = useState("");
+  const [isCompleting, setIsCompleting] = useState(false);
   useEffect(() => {
     if (!data) return;
     const officerName = resolveOfficerName(data.officerName, doctor);
@@ -577,6 +578,7 @@ export default function DoctorMfcDetail() {
       eyeTest: data.eyeTest || DEFAULT_EYE_TEST,
       eyeResult: data.eyeResult || "ALL GOOD",
       finalSummary: data.finalSummary || DEFAULT_DESCRIPTION,
+      status: data.status ?? "draft",
     });
   }, [data, doctor]);
 
@@ -654,12 +656,32 @@ export default function DoctorMfcDetail() {
   };
 
   const complete = async () => {
-    const payload = buildDraftPayload();
-    setDraft(payload);
-    await doctorFetch(`/mfc-cases/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
-    await doctorFetch(`/mfc-cases/${id}/complete`, { method: "POST" });
-    await queryClient.invalidateQueries({ queryKey: ["doctor-mfc-detail", id] });
+    try {
+      setIsCompleting(true);
+      const payload = {
+        ...buildDraftPayload(),
+        status: "completed",
+      };
+      setDraft(payload);
+      await doctorFetch(`/mfc-cases/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
+      await doctorFetch(`/mfc-cases/${id}/complete`, { method: "POST" });
+      await queryClient.invalidateQueries({ queryKey: ["doctor-mfc-detail", id] });
+      toast({
+        title: "MFC confirmed",
+        description: "This certificate is now marked as completed.",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to confirm MFC",
+        description: error instanceof Error ? error.message : "Could not complete this MFC case.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCompleting(false);
+    }
   };
+
+  const isCompleted = valueOf(draft, "status") === "completed";
 
   const downloadDocxPreviewPage = async (page: 1 | 2) => {
     const host = document.createElement("div");
@@ -728,7 +750,35 @@ export default function DoctorMfcDetail() {
               <div className="text-[11px] text-muted-foreground">You can use either an image link or upload a photo file.</div>
             </div>
             <Button onClick={() => void save()}>Save Changes</Button>
-            <Button variant="outline" onClick={() => void complete()}>Complete MFC</Button>
+            <Button
+              type="button"
+              onClick={() => void complete()}
+              disabled={isCompleting || isCompleted}
+              className={[
+                "group relative h-11 min-w-[160px] overflow-hidden rounded-md border px-4 text-[11px] font-semibold uppercase tracking-[0.24em] transition-all duration-300",
+                "before:absolute before:inset-x-[10%] before:top-0 before:h-px before:bg-white/70 before:content-['']",
+                "after:absolute after:inset-x-3 after:bottom-0 after:h-[2px] after:rounded-full after:bg-black/25 after:blur-[1px] after:content-['']",
+                isCompleted
+                  ? "border-emerald-300/70 bg-[linear-gradient(180deg,#67f3cd_0%,#28cfa8_46%,#129579_100%)] text-slate-950 shadow-[0_10px_24px_rgba(16,185,129,0.32),0_4px_0_#0a6c59] hover:translate-y-0"
+                  : "border-cyan-300/70 bg-[linear-gradient(180deg,#b8f7ff_0%,#53e4ff_16%,#12c6ee_52%,#0b7bb5_100%)] text-slate-950 shadow-[0_12px_26px_rgba(6,182,212,0.34),0_4px_0_#0c567c] hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(6,182,212,0.42),0_5px_0_#0c567c]",
+                isCompleting ? "animate-pulse cursor-wait" : "",
+                !isCompleted ? "active:translate-y-[3px] active:shadow-[0_4px_12px_rgba(6,182,212,0.28),0_1px_0_#0c567c]" : "",
+                "disabled:opacity-100",
+              ].join(" ")}
+            >
+              <span className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.55),transparent_52%)] opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
+              <span className="absolute inset-x-0 bottom-0 h-1/2 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.18))]" />
+              <span className="relative z-10 flex items-center justify-center gap-2">
+                <span
+                  className={[
+                    "inline-block h-2.5 w-2.5 rounded-full border border-slate-950/20",
+                    isCompleted ? "bg-emerald-100 shadow-[0_0_10px_rgba(255,255,255,0.9)]" : "bg-slate-950/90",
+                    isCompleting ? "animate-ping" : "",
+                  ].join(" ")}
+                />
+                <span>{isCompleting ? "Confirming..." : isCompleted ? "Confirmed MFC" : "Complete MFC"}</span>
+              </span>
+            </Button>
           </CardContent>
         </Card>
 
