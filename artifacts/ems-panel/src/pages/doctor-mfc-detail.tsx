@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { PrintVersionsPanel } from "@/pages/doctor-components";
 import type { DoctorSession } from "@/hooks/use-doctor-auth";
 
+const CERTIFICATE_FONT = '"Times New Roman", serif';
+
 const DEFAULT_BLOOD_TEST = [
   "Red blood Cells (RBC)- 4.35 to 5.65(Man),3.92 to 5.13(Women)",
   "White Blood Cells (WBC)- 4500-11000/mm3",
@@ -93,8 +95,12 @@ function CertificateHeader() {
         <div className="grid grid-cols-[60px_minmax(0,1fr)_60px] items-center gap-6 border-b border-slate-500 pb-3">
           <CertificateMark className="h-12 w-12 justify-self-center" />
           <div className="text-center">
-            <div className="font-serif text-[28px] font-bold uppercase tracking-[0.18em] text-slate-900">Mount Zonah</div>
-            <div className="mt-1 font-serif text-[18px] font-bold uppercase tracking-[0.14em] text-slate-900">Medical Fitness Certificate</div>
+            <div className="text-[28px] font-bold uppercase tracking-[0.18em] text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+              Mount Zonah
+            </div>
+            <div className="mt-1 text-[18px] font-bold uppercase tracking-[0.14em] text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+              Medical Fitness Certificate
+            </div>
           </div>
           <CertificateMark className="h-12 w-12 justify-self-center" />
         </div>
@@ -103,31 +109,19 @@ function CertificateHeader() {
   );
 }
 
-function Paper({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function Paper({ children }: { children: React.ReactNode }) {
   return <section className="border border-slate-300 bg-[#fffdfa] shadow-[0_18px_60px_rgba(15,23,42,0.18)]">{children}</section>;
 }
 
-function InlineField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
+function StaticField({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-2 text-[15px] text-slate-900">
-      <div className="font-semibold">{label}:</div>
-      <Input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-8 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 text-[15px] font-medium text-slate-900 shadow-none focus-visible:ring-0"
-      />
+      <div className="font-bold" style={{ fontFamily: CERTIFICATE_FONT }}>
+        {label}:
+      </div>
+      <div className="border-b border-slate-300 pb-1 text-[15px] font-semibold text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+        {value || "\u00a0"}
+      </div>
     </div>
   );
 }
@@ -151,39 +145,84 @@ function PhotoBox({ url }: { url: string }) {
   );
 }
 
-function ReportRow({
+function TextWrap({
+  text,
+  className = "",
+  style,
+}: {
+  text: string;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div className={`whitespace-pre-wrap break-words text-slate-900 ${className}`} style={{ fontFamily: CERTIFICATE_FONT, ...style }}>
+      {text}
+    </div>
+  );
+}
+
+function StaticResultBadge({ value }: { value: string }) {
+  return (
+    <div className="min-w-[70px] border border-emerald-700 bg-[#e8f5df] px-2 py-2 text-center text-[13px] font-bold uppercase text-emerald-800" style={{ fontFamily: CERTIFICATE_FONT }}>
+      {value || "ALL GOOD"}
+    </div>
+  );
+}
+
+function StaticReportRow({
   title,
   value,
   result,
-  rows,
-  onValueChange,
-  onResultChange,
+  extra,
 }: {
   title: string;
   value: string;
   result: string;
-  rows: number;
-  onValueChange: (value: string) => void;
-  onResultChange: (value: string) => void;
+  extra?: React.ReactNode;
 }) {
   return (
     <div className="grid border-b border-slate-500 last:border-b-0 md:grid-cols-[minmax(0,1fr)_116px]">
       <div className="border-b border-slate-500 p-2 md:border-b-0 md:border-r">
-        <div className="mb-1 text-[15px] font-bold text-slate-900">{title}</div>
-        <Textarea
-          value={value}
-          rows={rows}
-          onChange={(event) => onValueChange(event.target.value)}
-          className="min-h-0 resize-none rounded-none border-0 bg-transparent px-0 py-0 text-[14px] leading-6 text-slate-900 shadow-none focus-visible:ring-0"
-        />
+        <div className="mb-1 text-[15px] font-bold text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+          {title}
+        </div>
+        <TextWrap text={value} className="text-[14px] leading-6" />
+        {extra}
       </div>
       <div className="flex items-center justify-center p-2">
-        <Input
-          value={result}
-          onChange={(event) => onResultChange(event.target.value)}
-          className="h-9 rounded-none border border-emerald-700 bg-[#e8f5df] px-2 text-center text-[13px] font-bold uppercase text-emerald-800 focus-visible:ring-0"
-        />
+        <StaticResultBadge value={result} />
       </div>
+    </div>
+  );
+}
+
+function FieldControls({
+  draft,
+  setField,
+}: {
+  draft: MfcDraft;
+  setField: (field: string, value: string) => void;
+}) {
+  return (
+    <div className="grid gap-3 rounded-[18px] border border-border/60 bg-background/40 p-4">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.34em] text-muted-foreground">Editable Fields</div>
+      <Input value={valueOf(draft, "applicantName")} onChange={(event) => setField("applicantName", event.target.value)} placeholder="Applicant name" />
+      <Input value={valueOf(draft, "sex")} onChange={(event) => setField("sex", event.target.value)} placeholder="Sex" />
+      <Input value={valueOf(draft, "dateOfBirth")} onChange={(event) => setField("dateOfBirth", event.target.value)} placeholder="D.O.B" />
+      <Input value={valueOf(draft, "cid")} onChange={(event) => setField("cid", event.target.value)} placeholder="CID" />
+      <Input value={valueOf(draft, "number")} onChange={(event) => setField("number", event.target.value)} placeholder="Number" />
+      <Input value={valueOf(draft, "weight")} onChange={(event) => setField("weight", event.target.value)} placeholder="Weight" />
+      <Input value={valueOf(draft, "mfcReason")} onChange={(event) => setField("mfcReason", event.target.value)} placeholder="MFC Reason" />
+      <Input value={valueOf(draft, "examDateText")} onChange={(event) => setField("examDateText", event.target.value)} placeholder="Date" />
+      <Textarea value={valueOf(draft, "bloodTest")} rows={4} onChange={(event) => setField("bloodTest", event.target.value)} placeholder="Blood Test" />
+      <Input value={valueOf(draft, "bloodResult")} onChange={(event) => setField("bloodResult", event.target.value)} placeholder="Blood Result" />
+      <Textarea value={valueOf(draft, "mriTest")} rows={7} onChange={(event) => setField("mriTest", event.target.value)} placeholder="MRI Test" />
+      <Input value={valueOf(draft, "mriResult")} onChange={(event) => setField("mriResult", event.target.value)} placeholder="MRI Result" />
+      <Textarea value={valueOf(draft, "eyeTest")} rows={4} onChange={(event) => setField("eyeTest", event.target.value)} placeholder="Eye Test" />
+      <Input value={valueOf(draft, "eyeResult")} onChange={(event) => setField("eyeResult", event.target.value)} placeholder="Eye Result" />
+      <Textarea value={valueOf(draft, "finalSummary")} rows={5} onChange={(event) => setField("finalSummary", event.target.value)} placeholder="Description" />
+      <Input value={valueOf(draft, "officerName")} onChange={(event) => setField("officerName", event.target.value)} placeholder="Medical Officer Name" />
+      <Input value={valueOf(draft, "officerSignature")} onChange={(event) => setField("officerSignature", event.target.value)} placeholder="Medical Officer Signature" />
     </div>
   );
 }
@@ -261,18 +300,20 @@ export default function DoctorMfcDetail() {
         <div className="space-y-6">
           <Paper>
             <CertificateHeader />
-            <div className="px-12 pb-8 pt-4">
-              <div className="text-center text-[18px] font-bold text-slate-900">Applicant Information</div>
+            <div className="px-12 pb-8 pt-4" style={{ fontFamily: CERTIFICATE_FONT }}>
+              <div className="text-center text-[18px] font-bold text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+                Applicant Information
+              </div>
               <div className="mt-6 grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_200px]">
                 <div className="space-y-3">
-                  <InlineField label="Name" value={valueOf(draft, "applicantName")} onChange={(value) => setField("applicantName", value)} />
-                  <InlineField label="Sex" value={valueOf(draft, "sex")} onChange={(value) => setField("sex", value)} />
-                  <InlineField label="D.O.B" value={valueOf(draft, "dateOfBirth")} onChange={(value) => setField("dateOfBirth", value)} />
-                  <InlineField label="CID" value={valueOf(draft, "cid")} onChange={(value) => setField("cid", value)} />
-                  <InlineField label="Number" value={valueOf(draft, "number")} onChange={(value) => setField("number", value)} />
-                  <InlineField label="Weight" value={valueOf(draft, "weight")} onChange={(value) => setField("weight", value)} />
-                  <InlineField label="MFC Reason" value={valueOf(draft, "mfcReason")} onChange={(value) => setField("mfcReason", value)} />
-                  <InlineField label="Date" value={valueOf(draft, "examDateText")} onChange={(value) => setField("examDateText", value)} />
+                  <StaticField label="Name" value={valueOf(draft, "applicantName")} />
+                  <StaticField label="Sex" value={valueOf(draft, "sex")} />
+                  <StaticField label="D.O.B" value={valueOf(draft, "dateOfBirth")} />
+                  <StaticField label="CID" value={valueOf(draft, "cid")} />
+                  <StaticField label="Number" value={valueOf(draft, "number")} />
+                  <StaticField label="Weight" value={valueOf(draft, "weight")} />
+                  <StaticField label="MFC Reason" value={valueOf(draft, "mfcReason")} />
+                  <StaticField label="Date" value={valueOf(draft, "examDateText")} />
                 </div>
                 <div className="flex justify-center md:justify-end">
                   <PhotoBox url={valueOf(draft, "sourceAttachmentUrl")} />
@@ -280,98 +321,76 @@ export default function DoctorMfcDetail() {
               </div>
 
               <div className="mt-8">
-                <div className="mb-2 text-[18px] font-bold text-slate-900">Test Reports:</div>
+                <div className="mb-2 text-[18px] font-bold text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+                  Test Reports:
+                </div>
                 <div className="border border-slate-500">
-                  <div className="grid bg-slate-100 text-[15px] font-bold text-[#3b82f6] md:grid-cols-[minmax(0,1fr)_116px]">
+                  <div className="grid bg-slate-100 text-[15px] font-bold text-[#3b82f6] md:grid-cols-[minmax(0,1fr)_116px]" style={{ fontFamily: CERTIFICATE_FONT }}>
                     <div className="border-b border-slate-500 p-2 md:border-b-0 md:border-r">Report Title</div>
                     <div className="p-2 text-center">Result</div>
                   </div>
-                  <ReportRow
-                    title="Blood Test:"
-                    value={valueOf(draft, "bloodTest")}
-                    result={valueOf(draft, "bloodResult")}
-                    rows={4}
-                    onValueChange={(value) => setField("bloodTest", value)}
-                    onResultChange={(value) => setField("bloodResult", value)}
-                  />
-                  <ReportRow
-                    title="MRI Test:"
-                    value={valueOf(draft, "mriTest")}
-                    result={valueOf(draft, "mriResult")}
-                    rows={8}
-                    onValueChange={(value) => setField("mriTest", value)}
-                    onResultChange={(value) => setField("mriResult", value)}
-                  />
-                  <ReportRow
+                  <StaticReportRow title="Blood Test:" value={valueOf(draft, "bloodTest")} result={valueOf(draft, "bloodResult")} />
+                  <StaticReportRow title="MRI Test:" value={valueOf(draft, "mriTest")} result={valueOf(draft, "mriResult")} />
+                  <StaticReportRow
                     title="Eye Test:"
                     value={valueOf(draft, "eyeTest")}
                     result={valueOf(draft, "eyeResult")}
-                    rows={4}
-                    onValueChange={(value) => setField("eyeTest", value)}
-                    onResultChange={(value) => setField("eyeResult", value)}
+                    extra={<div className="mt-3 text-[14px] leading-6 text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>E<br />F P<br />T O Z<br />L P E D<br />P E C F D<br />E D F C Z P<br />F L O P Z D</div>}
                   />
                 </div>
               </div>
 
-              <div className="mt-6 text-[15px] text-slate-900">
+              <div className="mt-6 text-[15px] text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
                 <span className="font-bold text-[#2563eb] underline">Signature of Medical Officer:</span>{" "}
-                <Input
-                  value={valueOf(draft, "officerSignature")}
-                  onChange={(event) => setField("officerSignature", event.target.value)}
-                  className="inline-flex h-10 w-[320px] rounded-none border-0 border-b border-slate-300 bg-transparent px-0 align-middle text-slate-900 shadow-none focus-visible:ring-0"
-                  style={{ fontFamily: "'Segoe Script', 'Brush Script MT', 'Segoe Print', cursive", fontSize: "28px", fontWeight: 500 }}
-                />
+                <span style={{ fontFamily: "'Segoe Script', 'Brush Script MT', 'Segoe Print', cursive", fontSize: "28px", fontWeight: 500 }}>
+                  {valueOf(draft, "officerSignature")}
+                </span>
+                <div className="ml-[206px] mt-[-6px] w-[215px] border-b border-slate-300" />
               </div>
             </div>
           </Paper>
 
           <Paper>
             <CertificateHeader />
-            <div className="px-12 pb-8 pt-4">
-              <div className="text-center text-[18px] font-bold text-slate-900">Applicant Information</div>
+            <div className="px-12 pb-8 pt-4" style={{ fontFamily: CERTIFICATE_FONT }}>
+              <div className="text-center text-[18px] font-bold text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+                Applicant Information
+              </div>
               <div className="mt-6 grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_200px]">
                 <div className="space-y-3">
-                  <InlineField label="Name" value={valueOf(draft, "applicantName")} onChange={(value) => setField("applicantName", value)} />
-                  <InlineField label="Sex" value={valueOf(draft, "sex")} onChange={(value) => setField("sex", value)} />
-                  <InlineField label="D.O.B" value={valueOf(draft, "dateOfBirth")} onChange={(value) => setField("dateOfBirth", value)} />
-                  <InlineField label="CID" value={valueOf(draft, "cid")} onChange={(value) => setField("cid", value)} />
-                  <InlineField label="Number" value={valueOf(draft, "number")} onChange={(value) => setField("number", value)} />
-                  <InlineField label="Weight" value={valueOf(draft, "weight")} onChange={(value) => setField("weight", value)} />
-                  <InlineField label="MFC Reason" value={valueOf(draft, "mfcReason")} onChange={(value) => setField("mfcReason", value)} />
-                  <InlineField label="Date" value={valueOf(draft, "examDateText")} onChange={(value) => setField("examDateText", value)} />
+                  <StaticField label="Name" value={valueOf(draft, "applicantName")} />
+                  <StaticField label="Sex" value={valueOf(draft, "sex")} />
+                  <StaticField label="D.O.B" value={valueOf(draft, "dateOfBirth")} />
+                  <StaticField label="CID" value={valueOf(draft, "cid")} />
+                  <StaticField label="Number" value={valueOf(draft, "number")} />
+                  <StaticField label="Weight" value={valueOf(draft, "weight")} />
+                  <StaticField label="MFC Reason" value={valueOf(draft, "mfcReason")} />
+                  <StaticField label="Date" value={valueOf(draft, "examDateText")} />
                 </div>
                 <div className="flex justify-center md:justify-end">
                   <PhotoBox url={valueOf(draft, "sourceAttachmentUrl")} />
                 </div>
               </div>
 
-              <div className="mt-8 text-[16px] leading-8 text-slate-900">
-                <span className="font-bold">Description:</span>{" "}
-                <Textarea
-                  value={valueOf(draft, "finalSummary")}
-                  rows={5}
-                  onChange={(event) => setField("finalSummary", event.target.value)}
-                  className="mt-2 min-h-0 resize-none rounded-none border border-slate-300 bg-transparent text-[15px] leading-7 text-slate-900 shadow-none focus-visible:ring-0"
-                />
+              <div className="mt-8 grid grid-cols-[170px_minmax(0,1fr)] items-start gap-2 text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+                <div className="pt-1 text-[16px] font-extrabold">Description:</div>
+                <TextWrap text={valueOf(draft, "finalSummary")} className="text-[14px] leading-[1.55]" style={{ fontWeight: 700 }} />
               </div>
 
-              <div className="mt-6 space-y-3 text-[15px] text-slate-900">
-                <div>
-                  <span className="font-bold text-[#2563eb] underline">Name of Medical Officer:</span>{" "}
-                  <Input
-                    value={valueOf(draft, "officerName")}
-                    onChange={(event) => setField("officerName", event.target.value)}
-                    className="inline-flex h-8 w-[280px] rounded-none border-0 border-b border-slate-300 bg-transparent px-0 align-middle text-[15px] font-medium text-slate-900 shadow-none focus-visible:ring-0"
-                  />
+              <div className="mt-6 space-y-3 text-[15px] text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+                <div className="grid grid-cols-[230px_minmax(0,1fr)] items-center gap-2">
+                  <div className="font-extrabold text-[#2563eb] underline">Name of Medical Officer:</div>
+                  <div className="text-[16px] font-extrabold text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+                    {valueOf(draft, "officerName")}
+                  </div>
                 </div>
-                <div>
-                  <span className="font-bold text-[#2563eb] underline">Signature of Medical Officer:</span>{" "}
-                  <Input
-                    value={valueOf(draft, "officerSignature")}
-                    onChange={(event) => setField("officerSignature", event.target.value)}
-                    className="inline-flex h-10 w-[320px] rounded-none border-0 border-b border-slate-300 bg-transparent px-0 align-middle text-slate-900 shadow-none focus-visible:ring-0"
-                    style={{ fontFamily: "'Segoe Script', 'Brush Script MT', 'Segoe Print', cursive", fontSize: "28px", fontWeight: 500 }}
-                  />
+                <div className="grid grid-cols-[262px_minmax(0,1fr)] items-center gap-2">
+                  <div className="font-extrabold text-[#2563eb] underline">Signature of Medical Officer:</div>
+                  <div className="border-b border-slate-300 pb-1">
+                    <span style={{ fontFamily: "'Segoe Script', 'Brush Script MT', 'Segoe Print', cursive", fontSize: "28px", fontWeight: 500 }}>
+                      {valueOf(draft, "officerSignature")}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -392,6 +411,8 @@ export default function DoctorMfcDetail() {
               />
               <div className="text-xs leading-6 text-muted-foreground">Direct image link দিলে certificate-এর photo box আর generated print version-এ ওই photo show করবে.</div>
             </div>
+
+            <FieldControls draft={draft} setField={setField} />
 
             <div className="flex flex-wrap gap-3">
               <Button onClick={() => void save()}>Save Changes</Button>
