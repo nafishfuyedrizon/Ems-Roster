@@ -114,21 +114,54 @@ function renderSignatureLine(label: string, value: string, x: number, y: number)
   <text x="${signatureX}" y="${y - 6}" font-size="30" fill="#0f172a" font-family="'Segoe Script', 'Brush Script MT', 'Segoe Print', cursive">${esc(value)}</text>`;
 }
 
+function renderEyeChartMini(x: number, y: number): string {
+  const rows = [
+    { text: "E", size: 30 },
+    { text: "FP", size: 24 },
+    { text: "TOZ", size: 20 },
+    { text: "LPED", size: 17 },
+    { text: "PECFD", size: 15 },
+    { text: "EDFCZP", size: 13 },
+    { text: "FELOPZD", size: 12 },
+  ];
+  return rows
+    .map((row, index) => {
+      const lineY = y + index * 18;
+      return `<text x="${x}" y="${lineY}" text-anchor="middle" font-size="${row.size}" font-weight="700" fill="#111827" font-family="'Times New Roman', serif" letter-spacing="2">${row.text}</text>`;
+    })
+    .join("");
+}
+
+function renderResultBadge(x: number, y: number, width: number, height: number, value: string): string {
+  const text = wrapText(String(value || "ALL GOOD").toUpperCase(), 12);
+  return `
+    <rect x="${x}" y="${y}" width="${width}" height="${height}" fill="#eef8df" stroke="#5a8d37" stroke-width="1.2"/>
+    ${textLines(x + width / 2, y + height / 2 + 6 - ((text.length - 1) * 11), text, {
+      size: 14,
+      weight: 800,
+      color: "#2e5d1c",
+      lineHeight: 18,
+      anchor: "middle",
+    })}
+  `;
+}
+
 export function renderMfcSvg(input: Record<string, unknown>): string {
   const fields = applicantFields(input);
+  const fieldMap = Object.fromEntries(fields) as Record<string, string>;
   const bloodLines = wrapText(
     String(
       input.bloodTest ??
         "Red blood Cells (RBC)- 4.35 to 5.65(Man),3.92 to 5.13(Women)\nWhite Blood Cells (WBC)- 4500-11000/mm3\nPlatelets (PLT): 152 to 361",
     ),
-    58,
+    48,
   );
   const mriLines = wrapText(
     String(
       input.mriTest ??
         "1. Extensive tissue loss in the right temporal/occipital region with ex vacuo prominence of the right lateral ventricle and Wallerian degeneration of the right cerebral peduncle.\n2. Subtle focal defects of periventricular white matter probably due to superimposed small vessel ischemic disease.\n3. Previous studies are kept from being made available for review. At such time that a previous study becomes available, an addendum will be issued.",
     ),
-    58,
+    47,
   );
   const eyeLines = wrapText(String(input.eyeTest ?? "Successfully Read All the Text In This Chart"), 58);
   const summaryLines = wrapText(
@@ -136,70 +169,127 @@ export function renderMfcSvg(input: Record<string, unknown>): string {
       input.finalSummary ??
         "I have examined and certified that he is free from deafness or any other infirmity, mental or physical, likely to interfere with the efficiency of his work and found to possess good health.",
     ),
-    94,
+    72,
   );
-  const bloodHeight = Math.max(168, bloodLines.length * 32 + 68);
-  const mriHeight = Math.max(280, mriLines.length * 32 + 68);
-  const eyeHeight = Math.max(132, eyeLines.length * 32 + 68);
-  const resultX = 1068;
-  const contentX = 108;
-  const tableWidth = 1160;
-  const page2Top = 1320;
-  const bloodTop = 530;
-  const mriTop = bloodTop + bloodHeight;
-  const eyeTop = mriTop + mriHeight;
-  const totalTableHeight = bloodHeight + mriHeight + eyeHeight;
+  const bloodHeight = Math.max(118, bloodLines.length * 22 + 42);
+  const mriHeight = Math.max(214, mriLines.length * 20 + 48);
+  const eyeHeight = Math.max(200, eyeLines.length * 18 + 118);
+  const canvasWidth = 860;
+  const pageWidth = 760;
+  const pageX = 50;
+  const page1Y = 26;
+  const pageGap = 34;
+  const marginX = pageX + 44;
+  const photoX = pageX + 560;
+  const photoY = page1Y + 158;
+  const photoW = 150;
+  const photoH = 165;
+  const tableX = marginX;
+  const tableY = page1Y + 500;
+  const tableW = 640;
+  const resultColW = 118;
+  const contentColW = tableW - resultColW;
+  const resultX = tableX + contentColW;
+  const totalTableHeight = 42 + bloodHeight + mriHeight + eyeHeight;
   const photoUrl = String(input.sourceAttachmentUrl ?? "");
+  const officerName = String(input.officerName ?? "N/a");
+  const officerSignature = String(input.officerSignature ?? "N/a");
+  const tableBottom = tableY + totalTableHeight;
+  const signatureY = tableBottom + 48;
+  const pageHeight = signatureY - page1Y + 54;
+  const page2Y = page1Y + pageHeight + pageGap;
+  const headerTop = page1Y + 36;
+  const secondPhotoY = page2Y + 170;
+  const descriptionY = page2Y + 474;
+  const descriptionBlockHeight = 214;
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="2520" viewBox="0 0 1400 2520">
-  <rect width="1400" height="2520" fill="#ece7dc"/>
-  <rect x="56" y="50" width="1288" height="1180" fill="#fffef9" stroke="#111827" stroke-width="2.6"/>
-  <rect x="56" y="${page2Top}" width="1288" height="1140" fill="#fffef9" stroke="#111827" stroke-width="2.6"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${page2Y + pageHeight + pageGap}" viewBox="0 0 ${canvasWidth} ${page2Y + pageHeight + pageGap}">
+  <rect width="${canvasWidth}" height="${page2Y + pageHeight + pageGap}" fill="#ffffff"/>
+  <rect x="${pageX}" y="${page1Y}" width="${pageWidth}" height="${pageHeight}" fill="#ffffff"/>
+  <rect x="${pageX}" y="${page2Y}" width="${pageWidth}" height="${pageHeight}" fill="#ffffff"/>
 
-  ${renderMountZonahMark(176, 132, 84)}
-  ${renderMountZonahMark(1138, 132, 84)}
-  <text x="700" y="132" text-anchor="middle" font-size="44" font-weight="800" letter-spacing="8" fill="#111827" font-family="'Times New Roman', serif">MOUNT ZONAH</text>
-  <text x="700" y="184" text-anchor="middle" font-size="28" font-weight="700" letter-spacing="4" fill="#111827" font-family="'Times New Roman', serif">MEDICAL FITNESS CERTIFICATE</text>
-  <text x="108" y="248" font-size="28" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">Applicant Information</text>
-  ${renderApplicantColumn(fields, 108, 314)}
-  ${renderPhotoFrame(875, 286, 250, 250, photoUrl)}
+  <line x1="${pageX + 26}" y1="${headerTop}" x2="${pageX + pageWidth - 26}" y2="${headerTop}" stroke="#444" stroke-width="1"/>
+  ${renderMountZonahMark(pageX + 54, headerTop + 16, 54)}
+  ${renderMountZonahMark(pageX + pageWidth - 106, headerTop + 16, 54)}
+  <text x="${pageX + pageWidth / 2}" y="${headerTop + 26}" text-anchor="middle" font-size="27" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MOUNT ZONAH</text>
+  <text x="${pageX + pageWidth / 2}" y="${headerTop + 66}" text-anchor="middle" font-size="18" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MEDICAL FITNESS CERTIFICATE</text>
+  <line x1="${pageX + 26}" y1="${headerTop + 84}" x2="${pageX + pageWidth - 26}" y2="${headerTop + 84}" stroke="#444" stroke-width="1"/>
 
-  <text x="108" y="498" font-size="26" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">Test Reports:</text>
-  <rect x="108" y="530" width="${tableWidth}" height="${totalTableHeight}" fill="none" stroke="#111827" stroke-width="1.6"/>
-  <line x1="${resultX}" y1="530" x2="${resultX}" y2="${530 + totalTableHeight}" stroke="#111827" stroke-width="1.4"/>
-  <line x1="108" y1="584" x2="${108 + tableWidth}" y2="584" stroke="#111827" stroke-width="1.4"/>
-  <text x="150" y="565" font-size="20" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">Report Title</text>
-  <text x="${resultX + 90}" y="565" text-anchor="middle" font-size="20" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">Result</text>
+  <text x="${pageX + pageWidth / 2}" y="${page1Y + 150}" text-anchor="middle" font-size="18" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Applicant Information</text>
 
-  <line x1="108" y1="${bloodTop + bloodHeight}" x2="${108 + tableWidth}" y2="${bloodTop + bloodHeight}" stroke="#111827" stroke-width="1.2"/>
-  <line x1="108" y1="${mriTop + mriHeight}" x2="${108 + tableWidth}" y2="${mriTop + mriHeight}" stroke="#111827" stroke-width="1.2"/>
+  <text x="${marginX}" y="${page1Y + 192}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Name:</text>
+  <text x="${marginX}" y="${page1Y + 226}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Sex:</text>
+  <text x="${marginX}" y="${page1Y + 260}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">D.O.B:</text>
+  <text x="${marginX}" y="${page1Y + 294}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">CID:</text>
+  <text x="${marginX}" y="${page1Y + 328}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Number:</text>
+  <text x="${marginX}" y="${page1Y + 362}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Weight:</text>
+  <text x="${marginX}" y="${page1Y + 396}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">MFC Reason:</text>
+  <text x="${marginX}" y="${page1Y + 430}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Date:</text>
 
-  <text x="${contentX}" y="${bloodTop + 34}" font-size="20" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">Blood Test:</text>
-  ${textLines(contentX + 18, bloodTop + 74, bloodLines, { size: 18, color: "#1f2937", lineHeight: 30 })}
-  ${textLines(resultX + 90, bloodTop + bloodHeight / 2, wrapText(String(input.bloodResult ?? "ALL GOOD"), 12), { size: 20, color: "#166534", weight: 800, lineHeight: 28, anchor: "middle" })}
+  <text x="${marginX + 84}" y="${page1Y + 192}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Name"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 226}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Sex"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 260}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["D.O.B"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 294}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["CID"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 328}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Number"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 362}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Weight"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 396}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["MFC Reason"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 430}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Date"])}</text>
 
-  <text x="${contentX}" y="${mriTop + 34}" font-size="20" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">MRI Test:</text>
-  ${textLines(contentX + 18, mriTop + 74, mriLines, { size: 18, color: "#1f2937", lineHeight: 30 })}
-  ${textLines(resultX + 90, mriTop + mriHeight / 2, wrapText(String(input.mriResult ?? "ALL GOOD"), 12), { size: 20, color: "#166534", weight: 800, lineHeight: 28, anchor: "middle" })}
+  ${renderPhotoFrame(photoX, photoY, photoW, photoH, photoUrl)}
 
-  <text x="${contentX}" y="${eyeTop + 34}" font-size="20" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">Eye Test:</text>
-  ${textLines(contentX + 18, eyeTop + 74, eyeLines, { size: 18, color: "#1f2937", lineHeight: 30 })}
-  ${textLines(resultX + 90, eyeTop + eyeHeight / 2, wrapText(String(input.eyeResult ?? "ALL GOOD"), 12), { size: 20, color: "#166534", weight: 800, lineHeight: 28, anchor: "middle" })}
+  <line x1="${marginX}" y1="${page1Y + 458}" x2="${pageX + pageWidth - 44}" y2="${page1Y + 458}" stroke="#444" stroke-width="1"/>
+  <text x="${marginX}" y="${page1Y + 488}" font-size="18" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Test Reports:</text>
 
-  ${renderSignatureLine("Signature of Medical Officer:", String(input.officerSignature ?? "N/a"), 108, 1180)}
+  <rect x="${tableX}" y="${tableY}" width="${tableW}" height="${totalTableHeight}" fill="none" stroke="#111827" stroke-width="1.4"/>
+  <line x1="${resultX}" y1="${tableY}" x2="${resultX}" y2="${tableY + totalTableHeight}" stroke="#111827" stroke-width="1.2"/>
+  <line x1="${tableX}" y1="${tableY + 34}" x2="${tableX + tableW}" y2="${tableY + 34}" stroke="#111827" stroke-width="1.2"/>
+  <text x="${tableX + 12}" y="${tableY + 23}" font-size="14" font-weight="700" fill="#4f74d6" font-family="'Times New Roman', serif">Report Title</text>
+  <text x="${resultX + resultColW / 2}" y="${tableY + 23}" text-anchor="middle" font-size="14" font-weight="700" fill="#4f74d6" font-family="'Times New Roman', serif">Result</text>
+  <line x1="${tableX}" y1="${tableY + 34 + bloodHeight}" x2="${tableX + tableW}" y2="${tableY + 34 + bloodHeight}" stroke="#111827" stroke-width="1.1"/>
+  <line x1="${tableX}" y1="${tableY + 34 + bloodHeight + mriHeight}" x2="${tableX + tableW}" y2="${tableY + 34 + bloodHeight + mriHeight}" stroke="#111827" stroke-width="1.1"/>
 
-  ${renderMountZonahMark(176, page2Top + 82, 84)}
-  ${renderMountZonahMark(1138, page2Top + 82, 84)}
-  <text x="700" y="${page2Top + 82}" text-anchor="middle" font-size="44" font-weight="800" letter-spacing="8" fill="#111827" font-family="'Times New Roman', serif">MOUNT ZONAH</text>
-  <text x="700" y="${page2Top + 134}" text-anchor="middle" font-size="28" font-weight="700" letter-spacing="4" fill="#111827" font-family="'Times New Roman', serif">MEDICAL FITNESS CERTIFICATE</text>
-  <text x="108" y="${page2Top + 198}" font-size="28" font-weight="700" fill="#111827" font-family="'Segoe UI', sans-serif">Applicant Information</text>
-  ${renderApplicantColumn(fields, 108, page2Top + 264)}
-  ${renderPhotoFrame(875, page2Top + 236, 250, 250, photoUrl)}
+  <text x="${tableX + 12}" y="${tableY + 58}" font-size="16" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Blood Test:</text>
+  ${textLines(tableX + 16, tableY + 82, bloodLines, { size: 12, color: "#111827", lineHeight: 18 })}
+  ${renderResultBadge(resultX + 8, tableY + 34 + (bloodHeight / 2) - 18, resultColW - 16, 36, String(input.bloodResult ?? "ALL GOOD"))}
 
-  ${textLines(108, page2Top + 590, wrapText(`Description: ${String(input.finalSummary ?? "N/a")}`, 100), { size: 22, color: "#1f2937", lineHeight: 34 })}
-  <text x="108" y="${page2Top + 834}" font-size="22" fill="#111827" font-family="'Segoe UI', sans-serif">Name of Medical Officer: ${esc(String(input.officerName ?? "N/a"))}</text>
-  ${renderSignatureLine("Signature of Medical Officer:", String(input.officerSignature ?? "N/a"), 108, page2Top + 894)}
-  <text x="108" y="${page2Top + 1060}" font-size="18" fill="#64748b" font-family="'Segoe UI', sans-serif">Generated by Legacy BD EMS Doctor Portal</text>
+  <text x="${tableX + 12}" y="${tableY + 34 + bloodHeight + 26}" font-size="16" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MRI Test:</text>
+  ${textLines(tableX + 16, tableY + 34 + bloodHeight + 50, mriLines, { size: 11.5, color: "#111827", lineHeight: 18 })}
+  ${renderResultBadge(resultX + 8, tableY + 34 + bloodHeight + (mriHeight / 2) + 8, resultColW - 16, 36, String(input.mriResult ?? "ALL GOOD"))}
+
+  <text x="${tableX + 12}" y="${tableY + 34 + bloodHeight + mriHeight + 24}" font-size="16" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Eye Test:</text>
+  ${renderEyeChartMini(tableX + 62, tableY + 34 + bloodHeight + mriHeight + 58)}
+  ${textLines(tableX + 16, tableY + 34 + bloodHeight + mriHeight + 190, eyeLines, { size: 11.5, color: "#111827", lineHeight: 16 })}
+  ${renderResultBadge(resultX + 8, tableY + 34 + bloodHeight + mriHeight + (eyeHeight / 2) + 2, resultColW - 16, 36, String(input.eyeResult ?? "ALL GOOD"))}
+
+  <text x="${marginX}" y="${signatureY}" font-size="14" font-weight="700" fill="#2563eb" text-decoration="underline" font-family="'Times New Roman', serif">Signature of Medical Officer:</text>
+  <text x="${marginX + 216}" y="${signatureY - 2}" font-size="24" fill="#111827" font-family="'Segoe Script', 'Brush Script MT', cursive">${esc(officerSignature)}</text>
+  <line x1="${marginX + 205}" y1="${signatureY + 6}" x2="${marginX + 420}" y2="${signatureY + 6}" stroke="#94a3b8" stroke-width="1"/>
+
+  <line x1="${pageX + 26}" y1="${page2Y + 36}" x2="${pageX + pageWidth - 26}" y2="${page2Y + 36}" stroke="#444" stroke-width="1"/>
+  ${renderMountZonahMark(pageX + 54, page2Y + 52, 54)}
+  ${renderMountZonahMark(pageX + pageWidth - 106, page2Y + 52, 54)}
+  <text x="${pageX + pageWidth / 2}" y="${page2Y + 62}" text-anchor="middle" font-size="27" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MOUNT ZONAH</text>
+  <text x="${pageX + pageWidth / 2}" y="${page2Y + 102}" text-anchor="middle" font-size="18" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MEDICAL FITNESS CERTIFICATE</text>
+  <line x1="${pageX + 26}" y1="${page2Y + 120}" x2="${pageX + pageWidth - 26}" y2="${page2Y + 120}" stroke="#444" stroke-width="1"/>
+  <text x="${pageX + pageWidth / 2}" y="${page2Y + 168}" text-anchor="middle" font-size="18" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Applicant Information</text>
+
+  <text x="${pageX + 58}" y="${page2Y + 216}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Name: ${esc(fieldMap["Name"])}</text>
+  <text x="${pageX + 58}" y="${page2Y + 250}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Sex: ${esc(fieldMap["Sex"])}</text>
+  <text x="${pageX + 58}" y="${page2Y + 284}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">D.O.B: ${esc(fieldMap["D.O.B"])}</text>
+  <text x="${pageX + 58}" y="${page2Y + 318}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">CID: ${esc(fieldMap["CID"])}</text>
+  <text x="${pageX + 58}" y="${page2Y + 352}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Number: ${esc(fieldMap["Number"])}</text>
+  <text x="${pageX + 58}" y="${page2Y + 386}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Weight: ${esc(fieldMap["Weight"])}</text>
+  <text x="${pageX + 58}" y="${page2Y + 420}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">MFC Reason: ${esc(fieldMap["MFC Reason"])}</text>
+  <text x="${pageX + 58}" y="${page2Y + 454}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Date: ${esc(fieldMap["Date"])}</text>
+  ${renderPhotoFrame(pageX + 510, secondPhotoY, 174, 184, photoUrl)}
+
+  <text x="${pageX + 58}" y="${descriptionY}" font-size="16" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Description:</text>
+  ${textLines(pageX + 58, descriptionY + 30, summaryLines, { size: 14, weight: 700, color: "#111827", lineHeight: 22 })}
+
+  <text x="${pageX + 58}" y="${descriptionY + descriptionBlockHeight}" font-size="16" font-weight="800" fill="#2563eb" text-decoration="underline" font-family="'Times New Roman', serif">Name of Medical Officer:</text>
+  <text x="${pageX + 286}" y="${descriptionY + descriptionBlockHeight}" font-size="16" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">${esc(officerName)}</text>
+  <text x="${pageX + 58}" y="${descriptionY + descriptionBlockHeight + 38}" font-size="16" font-weight="800" fill="#2563eb" text-decoration="underline" font-family="'Times New Roman', serif">Signature of Medical Officer:</text>
+  <text x="${pageX + 318}" y="${descriptionY + descriptionBlockHeight + 35}" font-size="24" fill="#111827" font-family="'Segoe Script', 'Brush Script MT', cursive">${esc(officerSignature)}</text>
 </svg>`;
 }
 
