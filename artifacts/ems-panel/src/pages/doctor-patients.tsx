@@ -1,7 +1,7 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Building2, Phone, Search, ShieldPlus, UserRoundSearch } from "lucide-react";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
 import { DoctorPageShell } from "@/pages/doctor-shared";
 import { doctorFetch } from "@/lib/doctor-api";
 import { Badge } from "@/components/ui/badge";
@@ -88,10 +88,15 @@ function getQueryState() {
 }
 
 export default function DoctorPatients() {
-  const initial = useMemo(() => getQueryState(), []);
-  const [query, setQuery] = useState(initial.query);
+  const [location, setLocation] = useLocation();
+  const currentState = useMemo(() => getQueryState(), [location]);
+  const [query, setQuery] = useState(currentState.query);
   const deferredQuery = useDeferredValue(query.trim());
-  const openCharacterId = initial.characterId;
+  const openCharacterId = currentState.characterId;
+
+  useEffect(() => {
+    setQuery(currentState.query);
+  }, [currentState.query]);
 
   const { data: searchData, isFetching } = useQuery<MdtSearchResponse>({
     queryKey: ["doctor-mdt-search", deferredQuery],
@@ -111,7 +116,7 @@ export default function DoctorPatients() {
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
     params.set("characterId", String(characterId));
-    window.location.href = `/doctor/patients?${params.toString()}`;
+    setLocation(`/doctor/patients?${params.toString()}`);
   };
 
   const backToResultsHref = query.trim() ? `/doctor/patients?q=${encodeURIComponent(query.trim())}` : "/doctor/patients";
@@ -125,11 +130,9 @@ export default function DoctorPatients() {
               <h2 className="text-3xl font-bold uppercase tracking-tight">Patient Profile</h2>
               <p className="mt-1 font-mono text-sm text-muted-foreground">Full MDT profile view</p>
             </div>
-            <Button asChild variant="outline">
-              <Link href={backToResultsHref}>
-                <ArrowLeft className="h-4 w-4" />
-                Back to results
-              </Link>
+            <Button type="button" variant="outline" onClick={() => setLocation(backToResultsHref)}>
+              <ArrowLeft className="h-4 w-4" />
+              Back to results
             </Button>
           </div>
 
@@ -159,7 +162,7 @@ export default function DoctorPatients() {
                           <Badge variant="secondary">{selectedDetail.gender}</Badge>
                         </div>
                         <p className="mt-2 text-sm text-muted-foreground">
-                          Full citizen profile from Legacy MDT. Search result click korle only এই profile open হবে.
+                          Full citizen profile from Legacy MDT. Clicking a search result opens only this profile view.
                         </p>
                       </div>
                     </div>
@@ -258,7 +261,7 @@ export default function DoctorPatients() {
                 <div>
                   <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-primary">MDT Live Search</p>
                   <CardTitle className="mt-2">CID / name result card</CardTitle>
-                  <p className="mt-1 text-sm text-muted-foreground">CID বা name লিখে আগে শুধু result list দেখাবে. Result click করলে full profile open হবে.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Search by CID or name to see the result list first. Click any result to open the full profile.</p>
                 </div>
                 <div className="rounded-full border border-primary/30 bg-primary/10 p-2 text-primary">
                   <Search className="h-5 w-5" />
@@ -278,7 +281,7 @@ export default function DoctorPatients() {
 
               {deferredQuery.length < 1 ? (
                 <div className="rounded-xl border border-dashed border-border/50 bg-background/30 p-4 text-sm text-muted-foreground">
-                  Search শুরু করলে এখানেই matching result list দেখাবে।
+                  Start typing to show matching MDT search results here.
                 </div>
               ) : isFetching ? (
                 <div className="rounded-xl border border-dashed border-border/50 bg-background/30 p-4 text-sm text-muted-foreground">
