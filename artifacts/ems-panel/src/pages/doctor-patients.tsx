@@ -1,7 +1,6 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Building2, Phone, Search, ShieldPlus, UserRoundSearch } from "lucide-react";
-import { useLocation } from "wouter";
 import { DoctorPageShell } from "@/pages/doctor-shared";
 import { doctorFetch } from "@/lib/doctor-api";
 import { Badge } from "@/components/ui/badge";
@@ -88,15 +87,20 @@ function getQueryState() {
 }
 
 export default function DoctorPatients() {
-  const [location, setLocation] = useLocation();
-  const currentState = useMemo(() => getQueryState(), [location]);
-  const [query, setQuery] = useState(currentState.query);
+  const [pageState, setPageState] = useState(() => getQueryState());
+  const [query, setQuery] = useState(pageState.query);
   const deferredQuery = useDeferredValue(query.trim());
-  const openCharacterId = currentState.characterId;
+  const openCharacterId = pageState.characterId;
 
   useEffect(() => {
-    setQuery(currentState.query);
-  }, [currentState.query]);
+    const syncFromLocation = () => {
+      const next = getQueryState();
+      setPageState(next);
+      setQuery(next.query);
+    };
+    window.addEventListener("popstate", syncFromLocation);
+    return () => window.removeEventListener("popstate", syncFromLocation);
+  }, []);
 
   const { data: searchData, isFetching } = useQuery<MdtSearchResponse>({
     queryKey: ["doctor-mdt-search", deferredQuery],
@@ -116,7 +120,9 @@ export default function DoctorPatients() {
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
     params.set("characterId", String(characterId));
-    setLocation(`/doctor/patients?${params.toString()}`);
+    const href = `/doctor/patients?${params.toString()}`;
+    window.history.pushState({}, "", href);
+    setPageState({ query: query.trim(), characterId });
   };
 
   const backToResultsHref = query.trim() ? `/doctor/patients?q=${encodeURIComponent(query.trim())}` : "/doctor/patients";
@@ -130,7 +136,14 @@ export default function DoctorPatients() {
               <h2 className="text-3xl font-bold uppercase tracking-tight">Patient Profile</h2>
               <p className="mt-1 font-mono text-sm text-muted-foreground">Full MDT profile view</p>
             </div>
-            <Button type="button" variant="outline" onClick={() => setLocation(backToResultsHref)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                window.history.pushState({}, "", backToResultsHref);
+                setPageState({ query: query.trim(), characterId: null });
+              }}
+            >
               <ArrowLeft className="h-4 w-4" />
               Back to results
             </Button>
