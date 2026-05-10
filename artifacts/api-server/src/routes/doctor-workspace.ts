@@ -37,6 +37,8 @@ const MDT_LOGIN_CID = process.env.MDT_LOGIN_CID?.trim() || "";
 const MDT_LOGIN_PASSWORD = process.env.MDT_LOGIN_PASSWORD?.trim() || "";
 const MDT_ACCESS_TOKEN = process.env.MDT_ACCESS_TOKEN?.trim() || "";
 const MDT_REFRESH_TOKEN = process.env.MDT_REFRESH_TOKEN?.trim() || "";
+const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN?.trim() || "";
+const DISCORD_MFC_DUMP_CHANNEL_ID = process.env.DISCORD_MFC_DUMP_CHANNEL_ID?.trim() || "1441157572395667768";
 
 type MdtCharacter = {
   character_id: number;
@@ -453,6 +455,55 @@ async function svgToPngBuffer(svg: string) {
     .toBuffer();
 }
 
+function buildMfcDiscordMessageContent(row: typeof mfcCasesTable.$inferSelect, session: ReturnType<typeof doctorActor>) {
+  const lines = [
+    `Name: ${row.applicantName || "Unknown"}`,
+    `CID: ${row.cid || "N/A"}`,
+    `Completed By: ${session.callSign} - ${session.name}`,
+    "Picture:",
+  ];
+  return lines.join("\n");
+}
+
+async function postCompletedMfcToDiscord(row: typeof mfcCasesTable.$inferSelect, session: ReturnType<typeof doctorActor>) {
+  if (!DISCORD_BOT_TOKEN || !DISCORD_MFC_DUMP_CHANNEL_ID) {
+    console.warn("[DOCTOR-MFC] Discord post skipped: bot token or MFC dump channel is missing.");
+    return null;
+  }
+
+  const page1Png = await svgToPngBuffer(renderMfcSvg(row as unknown as Record<string, unknown>, 1));
+  const page2Png = await svgToPngBuffer(renderMfcSvg(row as unknown as Record<string, unknown>, 2));
+  const form = new FormData();
+
+  form.append(
+    "payload_json",
+    JSON.stringify({
+      content: buildMfcDiscordMessageContent(row, session),
+    }),
+  );
+  form.append("files[0]", new Blob([page1Png], { type: "image/png" }), `mfc-${row.id}-page-1.png`);
+  form.append("files[1]", new Blob([page2Png], { type: "image/png" }), `mfc-${row.id}-page-2.png`);
+
+  const response = await fetch(`https://discord.com/api/v10/channels/${DISCORD_MFC_DUMP_CHANNEL_ID}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+    },
+    body: form,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Discord MFC post failed with status ${response.status}: ${text.slice(0, 220)}`);
+  }
+
+  const json = await response.json() as { id?: string; channel_id?: string };
+  return {
+    discordMessageId: json.id ?? null,
+    discordChannelId: json.channel_id ?? DISCORD_MFC_DUMP_CHANNEL_ID,
+  };
+}
+
 function isMissingPrintVersionTableError(error: unknown) {
   const code = typeof error === "object" && error !== null ? (error as { code?: string }).code : undefined;
   const message = error instanceof Error ? error.message : String(error ?? "");
@@ -826,7 +877,32 @@ router.patch("/mfc-cases/:id", requireDoctorAuth, async (req, res) => {
 router.post("/mfc-cases/:id/complete", requireDoctorAuth, async (req, res) => {
   const id = Number(req.params.id);
   const session = doctorActor(req);
-  await db.update(mfcCasesTable).set({ status: "completed", completedAt: new Date(), updatedAt: new Date() }).where(eq(mfcCasesTable.id, id));
+  const [existing] = await db.select().from(mfcCasesTable).where(eq(mfcCasesTable.id, id)).limit(1);
+  if (!existing) return res.status(404).json({ error: "MFC case not found." });
+
+  const completedAt = new Date();
+  await db.update(mfcCasesTable).set({ status: "completed", completedAt, updatedAt: completedAt }).where(eq(mfcCasesTable.id, id));
+
+  const [completed] = await db.select().from(mfcCasesTable).where(eq(mfcCasesTable.id, id)).limit(1);
+  if (!completed) return res.status(404).json({ error: "MFC case not found after completion." });
+
+  if (!completed.discordMessageId) {
+    try {
+      const posted = await postCompletedMfcToDiscord(completed, session);
+      if (posted?.discordMessageId) {
+        await db.update(mfcCasesTable).set({
+          discordMessageId: posted.discordMessageId,
+          discordChannelId: posted.discordChannelId,
+          sourceAuthorName: session.name,
+          postedAt: completedAt,
+          updatedAt: new Date(),
+        }).where(eq(mfcCasesTable.id, id));
+      }
+    } catch (discordError) {
+      console.warn("[DOCTOR-MFC] Discord post failed during complete; continuing.", discordError);
+    }
+  }
+
   try {
     await createMfcEvent(id, "completed", "doctor", session.callSign, "MFC case completed");
   } catch (eventError) {

@@ -391,6 +391,12 @@ async function syncMfcDumpMessage(message: Message) {
   const cid = extractLineValue(text, ["CID"]);
   if (!cid && !extractAttachmentUrl(message)) return;
   const patientId = await resolveOrCreatePatient({ cid, name: patientName });
+  const attachmentUrl = extractAttachmentUrl(message);
+  const [existing] = await db
+    .select({ id: mfcCasesTable.id, sourceAttachmentUrl: mfcCasesTable.sourceAttachmentUrl })
+    .from(mfcCasesTable)
+    .where(eq(mfcCasesTable.discordMessageId, message.id))
+    .limit(1);
 
   await db.insert(mfcCasesTable).values({
     patientId,
@@ -402,7 +408,7 @@ async function syncMfcDumpMessage(message: Message) {
     examDateText: message.createdAt.toISOString().slice(0, 10),
     officerName: message.member?.displayName ?? message.author.username,
     officerSignature: message.member?.displayName ?? message.author.username,
-    sourceAttachmentUrl: extractAttachmentUrl(message),
+    sourceAttachmentUrl: attachmentUrl,
     importedFromArchive: true,
     postedAt: message.createdAt,
     status: "completed",
@@ -412,7 +418,7 @@ async function syncMfcDumpMessage(message: Message) {
       patientId,
       applicantName: patientName,
       cid,
-      sourceAttachmentUrl: extractAttachmentUrl(message),
+      sourceAttachmentUrl: existing?.sourceAttachmentUrl || attachmentUrl,
       sourceDeletedAt: null,
       updatedAt: new Date(),
     },
