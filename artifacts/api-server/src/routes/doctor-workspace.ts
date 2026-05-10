@@ -30,6 +30,29 @@ import { explainRankRequirement, rankMeetsRequirement } from "../lib/medical-per
 import { ensureMedicalSeeds } from "../lib/medical-seed";
 
 const router = Router();
+const MDT_API_BASE = process.env.MDT_API_BASE?.trim() || "https://mdt-server.legacyrpbd.com";
+const MDT_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type MdtCharacter = {
+  character_id: number;
+  first_name: string;
+  last_name: string;
+  gender: number;
+  job_name: string | null;
+  department_name: string | null;
+  position_name: string | null;
+  date_of_birth: string | null;
+  phone_number: string | null;
+  licence_identifier: string | null;
+  mugshot: string | null;
+};
+
+let mdtCharactersCache:
+  | {
+      expiresAt: number;
+      rows: MdtCharacter[];
+    }
+  | null = null;
 
 function doctorActor(req: import("express").Request) {
   return (req as any).doctorSession as {
@@ -46,16 +69,38 @@ function toIso(value: Date | null | undefined) {
   return value ? value.toISOString() : null;
 }
 
+function normalizeSearchValue(value: string | number | null | undefined) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+async function getMdtCharacters() {
+  if (mdtCharactersCache && Date.now() < mdtCharactersCache.expiresAt) {
+    return mdtCharactersCache.rows;
+  }
+
+  const response = await fetch(`${MDT_API_BASE}/public/characters`);
+  if (!response.ok) {
+    throw new Error(`MDT public character lookup failed with status ${response.status}`);
+  }
+
+  const rows = (await response.json()) as MdtCharacter[];
+  mdtCharactersCache = {
+    expiresAt: Date.now() + MDT_CACHE_TTL_MS,
+    rows,
+  };
+  return rows;
+}
+
 function patientMatchScore(
   patient: typeof patientsTable.$inferSelect,
   query: string,
 ) {
-  const normalizedQuery = query.trim().toLowerCase();
+  const normalizedQuery = normalizeSearchValue(query);
   if (!normalizedQuery) return 0;
 
-  const name = patient.name.toLowerCase();
-  const cid = String(patient.cid ?? "").toLowerCase();
-  const phone = String(patient.phone ?? "").toLowerCase();
+  const name = normalizeSearchValue(patient.name);
+  const cid = normalizeSearchValue(patient.cid);
+  const phone = normalizeSearchValue(patient.phone);
 
   if (cid === normalizedQuery) return 400;
   if (name === normalizedQuery) return 320;
@@ -65,6 +110,32 @@ function patientMatchScore(
   if (name.includes(normalizedQuery)) return 140;
   if (cid.includes(normalizedQuery)) return 120;
   if (phone.includes(normalizedQuery)) return 80;
+  return 0;
+}
+
+function mdtCharacterMatchScore(character: MdtCharacter, query: string) {
+  const normalizedQuery = normalizeSearchValue(query);
+  if (!normalizedQuery) return 0;
+
+  const cid = normalizeSearchValue(character.character_id);
+  const firstName = normalizeSearchValue(character.first_name);
+  const lastName = normalizeSearchValue(character.last_name);
+  const fullName = `${firstName} ${lastName}`.trim();
+  const phone = normalizeSearchValue(character.phone_number);
+  const department = normalizeSearchValue(character.department_name);
+  const position = normalizeSearchValue(character.position_name);
+
+  if (cid === normalizedQuery) return 420;
+  if (fullName === normalizedQuery) return 340;
+  if (firstName === normalizedQuery || lastName === normalizedQuery) return 300;
+  if (cid.startsWith(normalizedQuery)) return 260;
+  if (fullName.startsWith(normalizedQuery)) return 220;
+  if (phone.startsWith(normalizedQuery)) return 180;
+  if (fullName.includes(normalizedQuery)) return 150;
+  if (department.includes(normalizedQuery)) return 110;
+  if (position.includes(normalizedQuery)) return 100;
+  if (phone.includes(normalizedQuery)) return 90;
+  if (cid.includes(normalizedQuery)) return 80;
   return 0;
 }
 
@@ -214,6 +285,52 @@ router.patch("/doctor-appointments/:id", requireDoctorAuth, async (req, res) => 
 router.get("/patients", requireDoctorAuth, async (_req, res) => {
   const rows = await db.select().from(patientsTable).orderBy(desc(patientsTable.updatedAt));
   return res.json(rows.map((row) => ({ ...row, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() })));
+});
+
+router.get("/mdt/characters/search", requireDoctorAuth, async (req, res) => {
+  const query = String(req.query.q ?? "").trim();
+  if (!query) {
+    return res.json({ query: "", results: [] });
+  }
+
+  const mdtCharacters = await getMdtCharacters();
+  const ranked = mdtCharacters
+    .map((character) => ({ character, score: mdtCharacterMatchScore(character, query) }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score || a.character.character_id - b.character.character_id)
+    .slice(0, 8);
+
+  const candidateCids = ranked.map((entry) => String(entry.character.character_id));
+  const linkedPatients = candidateCids.length > 0
+    ? await db.select().from(patientsTable).where(inArray(patientsTable.cid, candidateCids))
+    : [];
+
+  const linkedPatientByCid = new Map(linkedPatients.map((patient) => [String(patient.cid ?? ""), patient]));
+  const results = await Promise.all(
+    ranked.map(async ({ character }) => {
+      const linkedPatient = linkedPatientByCid.get(String(character.character_id)) ?? null;
+      const workspaceCard = linkedPatient ? await getPatientSearchCard(linkedPatient) : null;
+      return {
+        characterId: character.character_id,
+        name: `${character.first_name} ${character.last_name}`.trim(),
+        firstName: character.first_name,
+        lastName: character.last_name,
+        cid: String(character.character_id),
+        gender: character.gender === 1 ? "Female" : "Male",
+        phone: character.phone_number,
+        dateOfBirth: character.date_of_birth,
+        jobName: character.job_name,
+        departmentName: character.department_name,
+        positionName: character.position_name,
+        licenceIdentifier: character.licence_identifier,
+        mugshot: character.mugshot,
+        workspacePatientId: linkedPatient?.id ?? null,
+        workspaceCard,
+      };
+    }),
+  );
+
+  return res.json({ query, results });
 });
 
 router.get("/patients/search", requireDoctorAuth, async (req, res) => {
