@@ -180,6 +180,9 @@ importers:
       pino-http:
         specifier: ^10
         version: 10.5.0
+      sharp:
+        specifier: ^0.34.4
+        version: 0.34.5
     devDependencies:
       '@types/cookie-parser':
         specifier: ^1.4.10

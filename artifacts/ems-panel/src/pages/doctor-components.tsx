@@ -53,10 +53,10 @@ export function PrintVersionsPanel({ documentType, documentId }: { documentType:
   };
 
   const buildPageDownloadUrl = (page: number) =>
-    `${withApiPath(`/documents/${documentType}/${documentId}/page/${page}`)}?download=1`;
+    `${withApiPath(`/documents/${documentType}/${documentId}/page/${page}.png`)}?download=1`;
 
   const buildCombinedDownloadUrl = () =>
-    `${withApiPath(`/documents/${documentType}/${documentId}/image.svg`)}?download=1`;
+    `${withApiPath(`/documents/${documentType}/${documentId}/image.png`)}?download=1`;
 
   return (
     <Card className="border-border/50 bg-card/50">

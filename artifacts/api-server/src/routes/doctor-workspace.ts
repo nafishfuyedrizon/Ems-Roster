@@ -388,6 +388,12 @@ async function loadDocumentPageSvg(documentType: string, documentId: number, pag
   return document?.svg ?? null;
 }
 
+async function svgToPngBuffer(svg: string) {
+  const sharpModule = await import("sharp");
+  const sharp = sharpModule.default;
+  return sharp(Buffer.from(svg), { density: 300 }).png().toBuffer();
+}
+
 function isMissingPrintVersionTableError(error: unknown) {
   const code = typeof error === "object" && error !== null ? (error as { code?: string }).code : undefined;
   const message = error instanceof Error ? error.message : String(error ?? "");
@@ -395,14 +401,14 @@ function isMissingPrintVersionTableError(error: unknown) {
 }
 
 function buildDocumentImageUrl(req: import("express").Request, documentType: string, documentId: number) {
-  return buildAbsoluteUrl(req, `/api/documents/${documentType}/${documentId}/image.svg`);
+  return buildAbsoluteUrl(req, `/api/documents/${documentType}/${documentId}/image.png`);
 }
 
 function buildDocumentPageImageUrls(req: import("express").Request, documentType: string, documentId: number) {
   if (documentType !== "mfc") return [];
   return [1, 2].map((page) => ({
     page,
-    url: buildAbsoluteUrl(req, `/api/documents/${documentType}/${documentId}/page/${page}`),
+    url: buildAbsoluteUrl(req, `/api/documents/${documentType}/${documentId}/page/${page}.png`),
   }));
 }
 
@@ -425,7 +431,7 @@ async function createPrintVersion(req: import("express").Request, documentType: 
       createdBy: session.callSign,
     }).$returningId();
 
-    const directUrl = buildAbsoluteUrl(req, `/api/print-versions/${inserted.id}/image.svg`);
+    const directUrl = buildAbsoluteUrl(req, `/api/print-versions/${inserted.id}/image.png`);
     await db.update(documentPrintVersionsTable).set({ directUrl }).where(eq(documentPrintVersionsTable.id, inserted.id));
     return {
       id: inserted.id,
@@ -1022,6 +1028,21 @@ router.get("/documents/:type/:id/image.svg", async (req, res) => {
   return res.send(document.svg);
 });
 
+router.get("/documents/:type/:id/image.png", async (req, res) => {
+  const documentType = String(req.params.type);
+  const documentId = Number(req.params.id);
+  const document = await loadDocumentPayload(documentType, documentId);
+  if (!document) return res.status(404).send("Not found");
+
+  const png = await svgToPngBuffer(document.svg);
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("Cache-Control", "public, max-age=300");
+  if (req.query.download !== undefined) {
+    res.setHeader("Content-Disposition", `attachment; filename="${documentType}-${documentId}.png"`);
+  }
+  return res.send(png);
+});
+
 router.get("/documents/:type/:id/page/:page", async (req, res) => {
   const documentType = String(req.params.type);
   const documentId = Number(req.params.id);
@@ -1037,6 +1058,22 @@ router.get("/documents/:type/:id/page/:page", async (req, res) => {
   return res.send(svg);
 });
 
+router.get("/documents/:type/:id/page/:page.png", async (req, res) => {
+  const documentType = String(req.params.type);
+  const documentId = Number(req.params.id);
+  const pageNumber = Number(req.params.page);
+  const svg = await loadDocumentPageSvg(documentType, documentId, pageNumber);
+  if (!svg) return res.status(404).send("Not found");
+
+  const png = await svgToPngBuffer(svg);
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("Cache-Control", "public, max-age=300");
+  if (req.query.download !== undefined) {
+    res.setHeader("Content-Disposition", `attachment; filename="${documentType}-${documentId}-page-${pageNumber}.png"`);
+  }
+  return res.send(png);
+});
+
 router.get("/print-versions/:id/image.svg", async (req, res) => {
   const versionId = Number(req.params.id);
   const [version] = await db.select().from(documentPrintVersionsTable).where(eq(documentPrintVersionsTable.id, versionId)).limit(1);
@@ -1050,6 +1087,22 @@ router.get("/print-versions/:id/image.svg", async (req, res) => {
     res.setHeader("Content-Disposition", `attachment; filename=\"${version.documentType}-${version.documentId}-version-${version.versionNumber}.svg\"`);
   }
   return res.send(document.svg);
+});
+
+router.get("/print-versions/:id/image.png", async (req, res) => {
+  const versionId = Number(req.params.id);
+  const [version] = await db.select().from(documentPrintVersionsTable).where(eq(documentPrintVersionsTable.id, versionId)).limit(1);
+  if (!version) return res.status(404).send("Not found");
+  const document = await loadDocumentPayload(version.documentType, version.documentId);
+  if (!document) return res.status(404).send("Not found");
+
+  const png = await svgToPngBuffer(document.svg);
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("Cache-Control", "public, max-age=300");
+  if (req.query.download !== undefined) {
+    res.setHeader("Content-Disposition", `attachment; filename="${version.documentType}-${version.documentId}-version-${version.versionNumber}.png"`);
+  }
+  return res.send(png);
 });
 
 export default router;
