@@ -6,6 +6,28 @@ import { hashPassword } from "../lib/doctor-auth";
 
 const router = Router();
 
+function isDuplicateEntryError(error: unknown) {
+  const candidate = error as {
+    code?: string;
+    errno?: number;
+    message?: string;
+    cause?: { code?: string; errno?: number; message?: string };
+  } | null;
+
+  const values = [
+    candidate?.code,
+    String(candidate?.errno ?? ""),
+    candidate?.message,
+    candidate?.cause?.code,
+    String(candidate?.cause?.errno ?? ""),
+    candidate?.cause?.message,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return /ER_DUP_ENTRY|1062|Duplicate entry/i.test(values);
+}
+
 router.get("/doctor-accounts", requireAdminRole(["full", "high-command"]), async (_req, res) => {
   const rows = await db
     .select({
@@ -59,7 +81,7 @@ router.post("/doctor-accounts", requireAdminRole(["full", "high-command"]), asyn
 
     return res.status(201).json({ id: inserted.id, memberId, username, createdPassword: password });
   } catch (error) {
-    if ((error as { code?: string } | null)?.code === "ER_DUP_ENTRY") {
+    if (isDuplicateEntryError(error)) {
       const [existingByMember] = await db
         .select({ id: doctorAccountsTable.id })
         .from(doctorAccountsTable)
