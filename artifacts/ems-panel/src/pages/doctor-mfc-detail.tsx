@@ -113,15 +113,29 @@ function Paper({ children }: { children: React.ReactNode }) {
   return <section className="border border-slate-300 bg-[#fffdfa] shadow-[0_18px_60px_rgba(15,23,42,0.18)]">{children}</section>;
 }
 
-function StaticField({ label, value }: { label: string; value: string }) {
+function EditableField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
   return (
     <div className="grid grid-cols-[110px_minmax(0,1fr)] items-center gap-2 text-[15px] text-slate-900">
       <div className="font-bold" style={{ fontFamily: CERTIFICATE_FONT }}>
         {label}:
       </div>
-      <div className="border-b border-slate-300 pb-1 text-[15px] font-semibold text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
-        {value || "\u00a0"}
-      </div>
+      <Input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder ?? label}
+        className="h-8 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 pb-1 pt-0 text-[15px] font-semibold text-slate-900 shadow-none focus-visible:ring-0"
+        style={{ fontFamily: CERTIFICATE_FONT }}
+      />
     </div>
   );
 }
@@ -169,15 +183,19 @@ function StaticResultBadge({ value }: { value: string }) {
   );
 }
 
-function StaticReportRow({
+function EditableReportRow({
   title,
   value,
+  onValueChange,
   result,
+  onResultChange,
   extra,
 }: {
   title: string;
   value: string;
+  onValueChange: (value: string) => void;
   result: string;
+  onResultChange: (value: string) => void;
   extra?: React.ReactNode;
 }) {
   return (
@@ -186,48 +204,23 @@ function StaticReportRow({
         <div className="mb-1 text-[15px] font-bold text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
           {title}
         </div>
-        <TextWrap text={value} className="text-[14px] leading-6" />
+        <Textarea
+          value={value}
+          onChange={(event) => onValueChange(event.target.value)}
+          rows={title === "MRI Test:" ? 9 : 5}
+          className="min-h-0 resize-none border-0 bg-transparent px-0 py-0 text-[14px] leading-6 text-slate-900 shadow-none focus-visible:ring-0"
+          style={{ fontFamily: CERTIFICATE_FONT }}
+        />
         {extra}
       </div>
       <div className="flex items-center justify-center p-2">
-        <StaticResultBadge value={result} />
+        <Input
+          value={result}
+          onChange={(event) => onResultChange(event.target.value)}
+          className="h-auto min-h-[42px] w-full rounded-none border border-emerald-700 bg-[#e8f5df] px-2 py-2 text-center text-[13px] font-bold uppercase text-emerald-800 shadow-none focus-visible:ring-0"
+          style={{ fontFamily: CERTIFICATE_FONT }}
+        />
       </div>
-    </div>
-  );
-}
-
-function SectionButton({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <Button
-      type="button"
-      variant={active ? "default" : "outline"}
-      className="font-mono uppercase tracking-[0.18em]"
-      onClick={onClick}
-    >
-      {label}
-    </Button>
-  );
-}
-
-function EditorBlock({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">{label}</div>
-      {children}
     </div>
   );
 }
@@ -243,8 +236,6 @@ export default function DoctorMfcDetail() {
     enabled: Number.isFinite(id),
   });
   const [draft, setDraft] = useState<MfcDraft>({});
-  const [activeSection, setActiveSection] = useState<"applicant" | "reports" | "officer">("applicant");
-
   useEffect(() => {
     if (!data) return;
     const officerName = resolveOfficerName(data.officerName, doctor);
@@ -304,97 +295,20 @@ export default function DoctorMfcDetail() {
     <DoctorPageShell>
       <div className="mx-auto flex max-w-[1180px] flex-col gap-6">
         <Card className="border-border/50 bg-card/50">
-          <CardContent className="flex flex-wrap gap-3 p-4">
+          <CardHeader>
+            <CardTitle>MFC Editor</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-end">
+            <div className="space-y-2">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">Applicant Photo URL</div>
+              <Input
+                value={valueOf(draft, "sourceAttachmentUrl")}
+                onChange={(event) => setField("sourceAttachmentUrl", event.target.value)}
+                placeholder="https://..."
+              />
+            </div>
             <Button onClick={() => void save()}>Save Changes</Button>
             <Button variant="outline" onClick={() => void complete()}>Complete MFC</Button>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/50 bg-card/50">
-          <CardHeader className="gap-4">
-            <div>
-              <CardTitle>Certificate Editor</CardTitle>
-              <p className="mt-2 text-sm text-muted-foreground">Edit from the top, then review the certificate below.</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <SectionButton active={activeSection === "applicant"} label="Applicant" onClick={() => setActiveSection("applicant")} />
-              <SectionButton active={activeSection === "reports"} label="Reports" onClick={() => setActiveSection("reports")} />
-              <SectionButton active={activeSection === "officer"} label="Officer" onClick={() => setActiveSection("officer")} />
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {activeSection === "applicant" ? (
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <EditorBlock label="Applicant Name">
-                  <Input value={valueOf(draft, "applicantName")} onChange={(event) => setField("applicantName", event.target.value)} placeholder="Applicant name" />
-                </EditorBlock>
-                <EditorBlock label="Applicant Photo URL">
-                  <Input value={valueOf(draft, "sourceAttachmentUrl")} onChange={(event) => setField("sourceAttachmentUrl", event.target.value)} placeholder="https://..." />
-                </EditorBlock>
-                <EditorBlock label="Sex">
-                  <Input value={valueOf(draft, "sex")} onChange={(event) => setField("sex", event.target.value)} placeholder="Sex" />
-                </EditorBlock>
-                <EditorBlock label="Date Of Birth">
-                  <Input value={valueOf(draft, "dateOfBirth")} onChange={(event) => setField("dateOfBirth", event.target.value)} placeholder="D.O.B" />
-                </EditorBlock>
-                <EditorBlock label="CID">
-                  <Input value={valueOf(draft, "cid")} onChange={(event) => setField("cid", event.target.value)} placeholder="CID" />
-                </EditorBlock>
-                <EditorBlock label="Number">
-                  <Input value={valueOf(draft, "number")} onChange={(event) => setField("number", event.target.value)} placeholder="Number" />
-                </EditorBlock>
-                <EditorBlock label="Weight">
-                  <Input value={valueOf(draft, "weight")} onChange={(event) => setField("weight", event.target.value)} placeholder="Weight" />
-                </EditorBlock>
-                <EditorBlock label="Date">
-                  <Input value={valueOf(draft, "examDateText")} onChange={(event) => setField("examDateText", event.target.value)} placeholder="Date" />
-                </EditorBlock>
-                <div className="md:col-span-2 xl:col-span-3">
-                  <EditorBlock label="MFC Reason">
-                    <Input value={valueOf(draft, "mfcReason")} onChange={(event) => setField("mfcReason", event.target.value)} placeholder="MFC Reason" />
-                  </EditorBlock>
-                </div>
-              </div>
-            ) : null}
-
-            {activeSection === "reports" ? (
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_200px]">
-                <EditorBlock label="Blood Test">
-                  <Textarea value={valueOf(draft, "bloodTest")} rows={5} onChange={(event) => setField("bloodTest", event.target.value)} placeholder="Blood Test" />
-                </EditorBlock>
-                <EditorBlock label="Blood Result">
-                  <Input value={valueOf(draft, "bloodResult")} onChange={(event) => setField("bloodResult", event.target.value)} placeholder="Blood Result" />
-                </EditorBlock>
-                <EditorBlock label="MRI Test">
-                  <Textarea value={valueOf(draft, "mriTest")} rows={9} onChange={(event) => setField("mriTest", event.target.value)} placeholder="MRI Test" />
-                </EditorBlock>
-                <EditorBlock label="MRI Result">
-                  <Input value={valueOf(draft, "mriResult")} onChange={(event) => setField("mriResult", event.target.value)} placeholder="MRI Result" />
-                </EditorBlock>
-                <EditorBlock label="Eye Test">
-                  <Textarea value={valueOf(draft, "eyeTest")} rows={5} onChange={(event) => setField("eyeTest", event.target.value)} placeholder="Eye Test" />
-                </EditorBlock>
-                <EditorBlock label="Eye Result">
-                  <Input value={valueOf(draft, "eyeResult")} onChange={(event) => setField("eyeResult", event.target.value)} placeholder="Eye Result" />
-                </EditorBlock>
-              </div>
-            ) : null}
-
-            {activeSection === "officer" ? (
-              <div className="grid gap-4">
-                <EditorBlock label="Description">
-                  <Textarea value={valueOf(draft, "finalSummary")} rows={6} onChange={(event) => setField("finalSummary", event.target.value)} placeholder="Description" />
-                </EditorBlock>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <EditorBlock label="Medical Officer Name">
-                    <Input value={valueOf(draft, "officerName")} onChange={(event) => setField("officerName", event.target.value)} placeholder="Medical Officer Name" />
-                  </EditorBlock>
-                  <EditorBlock label="Medical Officer Signature">
-                    <Input value={valueOf(draft, "officerSignature")} onChange={(event) => setField("officerSignature", event.target.value)} placeholder="Medical Officer Signature" />
-                  </EditorBlock>
-                </div>
-              </div>
-            ) : null}
           </CardContent>
         </Card>
 
@@ -407,14 +321,14 @@ export default function DoctorMfcDetail() {
               </div>
               <div className="mt-6 grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_200px]">
                 <div className="space-y-3">
-                  <StaticField label="Name" value={valueOf(draft, "applicantName")} />
-                  <StaticField label="Sex" value={valueOf(draft, "sex")} />
-                  <StaticField label="D.O.B" value={valueOf(draft, "dateOfBirth")} />
-                  <StaticField label="CID" value={valueOf(draft, "cid")} />
-                  <StaticField label="Number" value={valueOf(draft, "number")} />
-                  <StaticField label="Weight" value={valueOf(draft, "weight")} />
-                  <StaticField label="MFC Reason" value={valueOf(draft, "mfcReason")} />
-                  <StaticField label="Date" value={valueOf(draft, "examDateText")} />
+                  <EditableField label="Name" value={valueOf(draft, "applicantName")} onChange={(value) => setField("applicantName", value)} />
+                  <EditableField label="Sex" value={valueOf(draft, "sex")} onChange={(value) => setField("sex", value)} />
+                  <EditableField label="D.O.B" value={valueOf(draft, "dateOfBirth")} onChange={(value) => setField("dateOfBirth", value)} />
+                  <EditableField label="CID" value={valueOf(draft, "cid")} onChange={(value) => setField("cid", value)} />
+                  <EditableField label="Number" value={valueOf(draft, "number")} onChange={(value) => setField("number", value)} />
+                  <EditableField label="Weight" value={valueOf(draft, "weight")} onChange={(value) => setField("weight", value)} />
+                  <EditableField label="MFC Reason" value={valueOf(draft, "mfcReason")} onChange={(value) => setField("mfcReason", value)} />
+                  <EditableField label="Date" value={valueOf(draft, "examDateText")} onChange={(value) => setField("examDateText", value)} />
                 </div>
                 <div className="flex justify-center md:justify-end">
                   <PhotoBox url={valueOf(draft, "sourceAttachmentUrl")} />
@@ -430,12 +344,26 @@ export default function DoctorMfcDetail() {
                     <div className="border-b border-slate-500 p-2 md:border-b-0 md:border-r">Report Title</div>
                     <div className="p-2 text-center">Result</div>
                   </div>
-                  <StaticReportRow title="Blood Test:" value={valueOf(draft, "bloodTest")} result={valueOf(draft, "bloodResult")} />
-                  <StaticReportRow title="MRI Test:" value={valueOf(draft, "mriTest")} result={valueOf(draft, "mriResult")} />
-                  <StaticReportRow
+                  <EditableReportRow
+                    title="Blood Test:"
+                    value={valueOf(draft, "bloodTest")}
+                    onValueChange={(value) => setField("bloodTest", value)}
+                    result={valueOf(draft, "bloodResult")}
+                    onResultChange={(value) => setField("bloodResult", value)}
+                  />
+                  <EditableReportRow
+                    title="MRI Test:"
+                    value={valueOf(draft, "mriTest")}
+                    onValueChange={(value) => setField("mriTest", value)}
+                    result={valueOf(draft, "mriResult")}
+                    onResultChange={(value) => setField("mriResult", value)}
+                  />
+                  <EditableReportRow
                     title="Eye Test:"
                     value={valueOf(draft, "eyeTest")}
+                    onValueChange={(value) => setField("eyeTest", value)}
                     result={valueOf(draft, "eyeResult")}
+                    onResultChange={(value) => setField("eyeResult", value)}
                     extra={<div className="mt-3 text-[14px] leading-6 text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>E<br />F P<br />T O Z<br />L P E D<br />P E C F D<br />E D F C Z P<br />F L O P Z D</div>}
                   />
                 </div>
@@ -459,14 +387,14 @@ export default function DoctorMfcDetail() {
               </div>
               <div className="mt-6 grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_200px]">
                 <div className="space-y-3">
-                  <StaticField label="Name" value={valueOf(draft, "applicantName")} />
-                  <StaticField label="Sex" value={valueOf(draft, "sex")} />
-                  <StaticField label="D.O.B" value={valueOf(draft, "dateOfBirth")} />
-                  <StaticField label="CID" value={valueOf(draft, "cid")} />
-                  <StaticField label="Number" value={valueOf(draft, "number")} />
-                  <StaticField label="Weight" value={valueOf(draft, "weight")} />
-                  <StaticField label="MFC Reason" value={valueOf(draft, "mfcReason")} />
-                  <StaticField label="Date" value={valueOf(draft, "examDateText")} />
+                  <EditableField label="Name" value={valueOf(draft, "applicantName")} onChange={(value) => setField("applicantName", value)} />
+                  <EditableField label="Sex" value={valueOf(draft, "sex")} onChange={(value) => setField("sex", value)} />
+                  <EditableField label="D.O.B" value={valueOf(draft, "dateOfBirth")} onChange={(value) => setField("dateOfBirth", value)} />
+                  <EditableField label="CID" value={valueOf(draft, "cid")} onChange={(value) => setField("cid", value)} />
+                  <EditableField label="Number" value={valueOf(draft, "number")} onChange={(value) => setField("number", value)} />
+                  <EditableField label="Weight" value={valueOf(draft, "weight")} onChange={(value) => setField("weight", value)} />
+                  <EditableField label="MFC Reason" value={valueOf(draft, "mfcReason")} onChange={(value) => setField("mfcReason", value)} />
+                  <EditableField label="Date" value={valueOf(draft, "examDateText")} onChange={(value) => setField("examDateText", value)} />
                 </div>
                 <div className="flex justify-center md:justify-end">
                   <PhotoBox url={valueOf(draft, "sourceAttachmentUrl")} />
@@ -475,23 +403,33 @@ export default function DoctorMfcDetail() {
 
               <div className="mt-8 grid grid-cols-[170px_minmax(0,1fr)] items-start gap-2 text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
                 <div className="pt-1 text-[16px] font-extrabold">Description:</div>
-                <TextWrap text={valueOf(draft, "finalSummary")} className="text-[14px] leading-[1.55]" style={{ fontWeight: 700 }} />
+                <Textarea
+                  value={valueOf(draft, "finalSummary")}
+                  onChange={(event) => setField("finalSummary", event.target.value)}
+                  rows={5}
+                  className="min-h-0 resize-none border-0 bg-transparent px-0 py-0 text-[14px] leading-[1.55] text-slate-900 shadow-none focus-visible:ring-0"
+                  style={{ fontFamily: CERTIFICATE_FONT, fontWeight: 700 }}
+                />
               </div>
 
               <div className="mt-6 space-y-3 text-[15px] text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
                 <div className="grid grid-cols-[230px_minmax(0,1fr)] items-center gap-2">
                   <div className="font-extrabold text-[#2563eb] underline">Name of Medical Officer:</div>
-                  <div className="text-[16px] font-extrabold text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
-                    {valueOf(draft, "officerName")}
-                  </div>
+                  <Input
+                    value={valueOf(draft, "officerName")}
+                    onChange={(event) => setField("officerName", event.target.value)}
+                    className="h-8 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 py-0 text-[16px] font-extrabold text-slate-900 shadow-none focus-visible:ring-0"
+                    style={{ fontFamily: CERTIFICATE_FONT }}
+                  />
                 </div>
                 <div className="grid grid-cols-[262px_minmax(0,1fr)] items-center gap-2">
                   <div className="font-extrabold text-[#2563eb] underline">Signature of Medical Officer:</div>
-                  <div className="border-b border-slate-300 pb-1">
-                    <span style={{ fontFamily: "'Segoe Script', 'Brush Script MT', 'Segoe Print', cursive", fontSize: "28px", fontWeight: 500 }}>
-                      {valueOf(draft, "officerSignature")}
-                    </span>
-                  </div>
+                  <Input
+                    value={valueOf(draft, "officerSignature")}
+                    onChange={(event) => setField("officerSignature", event.target.value)}
+                    className="h-10 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 py-0 text-[28px] text-slate-900 shadow-none focus-visible:ring-0"
+                    style={{ fontFamily: "'Segoe Script', 'Brush Script MT', 'Segoe Print', cursive", fontWeight: 500 }}
+                  />
                 </div>
               </div>
             </div>
