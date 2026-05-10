@@ -555,6 +555,7 @@ export default function DoctorMfcDetail() {
   const [draft, setDraft] = useState<MfcDraft>({});
   const [resolvedPhotoUrl, setResolvedPhotoUrl] = useState("");
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isDraftDirty, setIsDraftDirty] = useState(false);
   useEffect(() => {
     if (!data) return;
     const officerName = resolveOfficerName(data.officerName, doctor);
@@ -580,6 +581,7 @@ export default function DoctorMfcDetail() {
       finalSummary: data.finalSummary || DEFAULT_DESCRIPTION,
       status: data.status ?? "draft",
     });
+    setIsDraftDirty(false);
   }, [data, doctor]);
 
   useEffect(() => {
@@ -605,6 +607,7 @@ export default function DoctorMfcDetail() {
 
   const setField = (field: string, value: string) => {
     setDraft((prev) => ({ ...prev, [field]: value }));
+    setIsDraftDirty(true);
   };
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -653,6 +656,7 @@ export default function DoctorMfcDetail() {
     setDraft(payload);
     await doctorFetch(`/mfc-cases/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
     await queryClient.invalidateQueries({ queryKey: ["doctor-mfc-detail", id] });
+    setIsDraftDirty(false);
   };
 
   const complete = async () => {
@@ -666,6 +670,7 @@ export default function DoctorMfcDetail() {
       await doctorFetch(`/mfc-cases/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
       await doctorFetch(`/mfc-cases/${id}/complete`, { method: "POST" });
       await queryClient.invalidateQueries({ queryKey: ["doctor-mfc-detail", id] });
+      setIsDraftDirty(false);
       toast({
         title: "MFC confirmed",
         description: "This certificate is now marked as completed.",
@@ -682,6 +687,7 @@ export default function DoctorMfcDetail() {
   };
 
   const isCompleted = valueOf(draft, "status") === "completed";
+  const canReconfirm = isCompleted && isDraftDirty;
 
   const downloadDocxPreviewPage = async (page: 1 | 2) => {
     const host = document.createElement("div");
@@ -753,16 +759,22 @@ export default function DoctorMfcDetail() {
             <Button
               type="button"
               onClick={() => void complete()}
-              disabled={isCompleting || isCompleted}
+              disabled={isCompleting}
               className={[
                 "group relative h-11 min-w-[160px] overflow-hidden rounded-md border px-4 text-[11px] font-semibold uppercase tracking-[0.24em] transition-all duration-300",
                 "before:absolute before:inset-x-[10%] before:top-0 before:h-px before:bg-white/70 before:content-['']",
                 "after:absolute after:inset-x-3 after:bottom-0 after:h-[2px] after:rounded-full after:bg-black/25 after:blur-[1px] after:content-['']",
-                isCompleted
+                isCompleted && !canReconfirm
                   ? "border-emerald-300/70 bg-[linear-gradient(180deg,#67f3cd_0%,#28cfa8_46%,#129579_100%)] text-slate-950 shadow-[0_10px_24px_rgba(16,185,129,0.32),0_4px_0_#0a6c59] hover:translate-y-0"
+                  : canReconfirm
+                    ? "border-amber-200/80 bg-[linear-gradient(180deg,#fff3b2_0%,#ffd95e_18%,#f8b72f_54%,#b86a09_100%)] text-slate-950 shadow-[0_12px_28px_rgba(245,158,11,0.32),0_4px_0_#8a4a06] hover:-translate-y-0.5 hover:shadow-[0_16px_32px_rgba(245,158,11,0.4),0_5px_0_#8a4a06]"
                   : "border-cyan-300/70 bg-[linear-gradient(180deg,#b8f7ff_0%,#53e4ff_16%,#12c6ee_52%,#0b7bb5_100%)] text-slate-950 shadow-[0_12px_26px_rgba(6,182,212,0.34),0_4px_0_#0c567c] hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(6,182,212,0.42),0_5px_0_#0c567c]",
                 isCompleting ? "animate-pulse cursor-wait" : "",
-                !isCompleted ? "active:translate-y-[3px] active:shadow-[0_4px_12px_rgba(6,182,212,0.28),0_1px_0_#0c567c]" : "",
+                canReconfirm
+                  ? "active:translate-y-[3px] active:shadow-[0_4px_12px_rgba(245,158,11,0.28),0_1px_0_#8a4a06]"
+                  : !isCompleted
+                    ? "active:translate-y-[3px] active:shadow-[0_4px_12px_rgba(6,182,212,0.28),0_1px_0_#0c567c]"
+                    : "",
                 "disabled:opacity-100",
               ].join(" ")}
             >
@@ -772,11 +784,15 @@ export default function DoctorMfcDetail() {
                 <span
                   className={[
                     "inline-block h-2.5 w-2.5 rounded-full border border-slate-950/20",
-                    isCompleted ? "bg-emerald-100 shadow-[0_0_10px_rgba(255,255,255,0.9)]" : "bg-slate-950/90",
+                    isCompleted && !canReconfirm
+                      ? "bg-emerald-100 shadow-[0_0_10px_rgba(255,255,255,0.9)]"
+                      : canReconfirm
+                        ? "bg-amber-50 shadow-[0_0_10px_rgba(255,248,200,0.95)]"
+                        : "bg-slate-950/90",
                     isCompleting ? "animate-ping" : "",
                   ].join(" ")}
                 />
-                <span>{isCompleting ? "Confirming..." : isCompleted ? "Confirmed MFC" : "Complete MFC"}</span>
+                <span>{isCompleting ? "Confirming..." : canReconfirm ? "Reconfirm MFC" : isCompleted ? "Confirmed MFC" : "Complete MFC"}</span>
               </span>
             </Button>
           </CardContent>
