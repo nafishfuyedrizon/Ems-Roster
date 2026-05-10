@@ -189,6 +189,154 @@ function StaticResultBadge({ value }: { value: string }) {
   );
 }
 
+function StaticFieldRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid grid-cols-[88px_minmax(0,1fr)] items-end gap-3 text-[15px] text-slate-900">
+      <div className="font-bold" style={{ fontFamily: CERTIFICATE_FONT }}>
+        {label}:
+      </div>
+      <div className="border-b border-slate-300 pb-1 text-[15px]" style={{ fontFamily: CERTIFICATE_FONT }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function StaticReportRow({
+  title,
+  value,
+  result,
+  extra,
+}: {
+  title: string;
+  value: string;
+  result: string;
+  extra?: React.ReactNode;
+}) {
+  return (
+    <div className="grid border-b border-slate-500 last:border-b-0 md:grid-cols-[minmax(0,1fr)_116px]">
+      <div className="border-b border-slate-500 p-3 md:border-b-0 md:border-r">
+        <div className="mb-2 text-[15px] font-bold text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+          {title}
+        </div>
+        <TextWrap text={value} className="text-[15px] leading-7" />
+        {extra}
+      </div>
+      <div className="flex items-center justify-center p-3">
+        <StaticResultBadge value={result} />
+      </div>
+    </div>
+  );
+}
+
+function StaticSignatureLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="mt-6 text-[15px] text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+      <span className="font-bold text-[#2563eb] underline">{label}</span>{" "}
+      <span style={{ fontFamily: "'Segoe Script', 'Brush Script MT', 'Segoe Print', cursive", fontSize: "28px", fontWeight: 500 }}>
+        {value}
+      </span>
+      <div className="ml-[206px] mt-[-6px] w-[215px] border-b border-slate-300" />
+    </div>
+  );
+}
+
+function StaticMfcPageOne({ draft }: { draft: MfcDraft }) {
+  return (
+    <Paper>
+      <CertificateHeader />
+      <div className="px-12 pb-8 pt-4" style={{ fontFamily: CERTIFICATE_FONT }}>
+        <div className="text-center text-[18px] font-bold text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+          Applicant Information
+        </div>
+        <div className="mt-6 grid items-start gap-8 md:grid-cols-[minmax(0,1fr)_200px]">
+          <div className="space-y-3">
+            <StaticFieldRow label="Name" value={valueOf(draft, "applicantName")} />
+            <StaticFieldRow label="Sex" value={valueOf(draft, "sex")} />
+            <StaticFieldRow label="D.O.B" value={valueOf(draft, "dateOfBirth")} />
+            <StaticFieldRow label="CID" value={valueOf(draft, "cid")} />
+            <StaticFieldRow label="Number" value={valueOf(draft, "number")} />
+            <StaticFieldRow label="Weight" value={valueOf(draft, "weight")} />
+            <StaticFieldRow label="MFC Reason" value={valueOf(draft, "mfcReason")} />
+            <StaticFieldRow label="Date" value={valueOf(draft, "examDateText")} />
+          </div>
+          <div className="flex justify-center md:justify-end">
+            <PhotoBox url={valueOf(draft, "sourceAttachmentUrl")} />
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <div className="mb-2 text-[18px] font-bold text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+            Test Reports:
+          </div>
+          <div className="border border-slate-500">
+            <div className="grid bg-slate-100 text-[15px] font-bold text-[#3b82f6] md:grid-cols-[minmax(0,1fr)_116px]" style={{ fontFamily: CERTIFICATE_FONT }}>
+              <div className="border-b border-slate-500 p-2 md:border-b-0 md:border-r">Report Title</div>
+              <div className="p-2 text-center">Result</div>
+            </div>
+            <StaticReportRow title="Blood Test:" value={valueOf(draft, "bloodTest")} result={valueOf(draft, "bloodResult")} />
+            <StaticReportRow title="MRI Test:" value={valueOf(draft, "mriTest")} result={valueOf(draft, "mriResult")} />
+            <StaticReportRow
+              title="Eye Test:"
+              value={valueOf(draft, "eyeTest")}
+              result={valueOf(draft, "eyeResult")}
+              extra={<div className="mt-3 text-[14px] leading-6 text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>E<br />F P<br />T O Z<br />L P E D<br />P E C F D<br />E D F C Z P<br />F L O P Z D</div>}
+            />
+          </div>
+        </div>
+
+        <StaticSignatureLine label="Signature of Medical Officer:" value={valueOf(draft, "officerSignature")} />
+      </div>
+    </Paper>
+  );
+}
+
+function StaticMfcPageTwo({ draft }: { draft: MfcDraft }) {
+  return (
+    <Paper>
+      <CertificateHeader />
+      <div className="px-12 pb-8 pt-4" style={{ fontFamily: CERTIFICATE_FONT }}>
+        <div className="text-center text-[18px] font-bold text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+          Applicant Information
+        </div>
+        <div className="mt-6 grid items-start gap-8 md:grid-cols-[minmax(0,1fr)_200px]">
+          <div className="space-y-3">
+            <StaticFieldRow label="Name" value={valueOf(draft, "applicantName")} />
+            <StaticFieldRow label="Sex" value={valueOf(draft, "sex")} />
+            <StaticFieldRow label="D.O.B" value={valueOf(draft, "dateOfBirth")} />
+            <StaticFieldRow label="CID" value={valueOf(draft, "cid")} />
+            <StaticFieldRow label="Number" value={valueOf(draft, "number")} />
+            <StaticFieldRow label="Weight" value={valueOf(draft, "weight")} />
+            <StaticFieldRow label="MFC Reason" value={valueOf(draft, "mfcReason")} />
+            <StaticFieldRow label="Date" value={valueOf(draft, "examDateText")} />
+          </div>
+          <div className="flex justify-center md:justify-end">
+            <PhotoBox url={valueOf(draft, "sourceAttachmentUrl")} />
+          </div>
+        </div>
+
+        <div className="mt-8 grid grid-cols-[170px_minmax(0,1fr)] items-start gap-2 text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+          <div className="pt-1 text-[16px] font-extrabold">Description:</div>
+          <TextWrap text={valueOf(draft, "finalSummary")} className="text-[16px] font-bold leading-8" />
+        </div>
+
+        <div className="mt-6 space-y-3 text-[15px] text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+          <div className="grid grid-cols-[230px_minmax(0,1fr)] items-center gap-2">
+            <div className="font-extrabold text-[#2563eb] underline">Name of Medical Officer:</div>
+            <div className="border-b border-slate-300 pb-1 text-[17px] font-extrabold">{valueOf(draft, "officerName")}</div>
+          </div>
+          <div className="grid grid-cols-[262px_minmax(0,1fr)] items-center gap-2">
+            <div className="font-extrabold text-[#2563eb] underline">Signature of Medical Officer:</div>
+            <div className="border-b border-slate-300 pb-1 text-[30px] leading-none text-slate-900" style={{ fontFamily: "'Segoe Script', 'Brush Script MT', 'Segoe Print', cursive", fontWeight: 500 }}>
+              {valueOf(draft, "officerSignature")}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Paper>
+  );
+}
+
 function EditableReportRow({
   title,
   value,
@@ -245,8 +393,8 @@ export default function DoctorMfcDetail() {
   const id = Number(params?.id);
   const { doctor } = useDoctorGuard();
   const { toast } = useToast();
-  const page1Ref = useRef<HTMLElement | null>(null);
-  const page2Ref = useRef<HTMLElement | null>(null);
+  const capturePage1Ref = useRef<HTMLDivElement | null>(null);
+  const capturePage2Ref = useRef<HTMLDivElement | null>(null);
   const { data } = useQuery<any>({
     queryKey: ["doctor-mfc-detail", id],
     queryFn: () => doctorFetch(`/mfc-cases/${id}`),
@@ -309,7 +457,7 @@ export default function DoctorMfcDetail() {
   };
 
   const downloadPreviewPage = async (page: 1 | 2) => {
-    const target = page === 1 ? page1Ref.current : page2Ref.current;
+    const target = page === 1 ? capturePage1Ref.current : capturePage2Ref.current;
     if (!target) return;
 
     try {
@@ -336,6 +484,14 @@ export default function DoctorMfcDetail() {
   return (
     <DoctorPageShell>
       <div className="mx-auto flex max-w-[1180px] flex-col gap-6">
+        <div className="pointer-events-none fixed left-[-20000px] top-0">
+          <div ref={capturePage1Ref} className="w-[760px] bg-[#fffdfa]">
+            <StaticMfcPageOne draft={draft} />
+          </div>
+          <div ref={capturePage2Ref} className="mt-8 w-[760px] bg-[#fffdfa]">
+            <StaticMfcPageTwo draft={draft} />
+          </div>
+        </div>
         <Card className="border-border/50 bg-card/50">
           <CardHeader>
             <CardTitle>MFC Editor</CardTitle>
@@ -359,7 +515,7 @@ export default function DoctorMfcDetail() {
         </Card>
 
         <div className="space-y-6">
-          <div ref={(node) => { page1Ref.current = node; }}>
+          <div>
           <Paper>
             <CertificateHeader />
             <div className="px-12 pb-8 pt-4" style={{ fontFamily: CERTIFICATE_FONT }}>
@@ -427,7 +583,7 @@ export default function DoctorMfcDetail() {
           </Paper>
           </div>
 
-          <div ref={(node) => { page2Ref.current = node; }}>
+          <div>
           <Paper>
             <CertificateHeader />
             <div className="px-12 pb-8 pt-4" style={{ fontFamily: CERTIFICATE_FONT }}>
