@@ -180,22 +180,34 @@ export function renderMfcSvg(input: Record<string, unknown>, pageNumber?: 1 | 2)
   const officerSignature = String(input.officerSignature ?? "N/a");
   const tableBottom = tableY + totalTableHeight;
   const signatureY = tableBottom + 48;
-  const pageHeight = signatureY - page1Y + 54;
-  const page2Y = page1Y + pageHeight + pageGap;
+  const page1Height = signatureY - page1Y + 54;
+  const page2Y = page1Y + page1Height + pageGap;
   const headerTop = page1Y + 36;
-  const secondPhotoY = page2Y + 150;
-  const descriptionY = page2Y + 422;
-  const descriptionBlockHeight = 172;
+  const secondPageHeaderTop = page2Y + 36;
+  const secondPhotoY = page2Y + 168;
+  const secondPhotoW = 138;
+  const secondPhotoH = 154;
+  const page2FieldStartY = page2Y + 206;
+  const page2FieldGap = 36;
+  const page2LastFieldY = page2FieldStartY + page2FieldGap * 7;
+  const descriptionY = page2Y + 502;
+  const descriptionTextY = descriptionY + 2;
+  const descriptionBlockHeight = Math.max(96, summaryLines.length * 22 + 8);
+  const officerNameY = descriptionY + descriptionBlockHeight + 52;
+  const officerSignatureY = officerNameY + 42;
+  const page2BottomY = officerSignatureY + 24;
+  const page2Height = page2BottomY - page2Y + 70;
+  const combinedRootHeight = page2Y + page2Height + pageGap;
   const rootWidth = pageNumber ? pageWidth : canvasWidth;
-  const rootHeight = pageNumber ? pageHeight : page2Y + pageHeight + pageGap;
+  const rootHeight = pageNumber ? (pageNumber === 1 ? page1Height : page2Height) : combinedRootHeight;
   const viewBox = pageNumber
-    ? `${pageX} ${pageNumber === 1 ? page1Y : page2Y} ${pageWidth} ${pageHeight}`
-    : `0 0 ${canvasWidth} ${page2Y + pageHeight + pageGap}`;
+    ? `${pageX} ${pageNumber === 1 ? page1Y : page2Y} ${pageWidth} ${pageNumber === 1 ? page1Height : page2Height}`
+    : `0 0 ${canvasWidth} ${combinedRootHeight}`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${rootWidth}" height="${rootHeight}" viewBox="${viewBox}">
-  <rect width="${canvasWidth}" height="${page2Y + pageHeight + pageGap}" fill="#ffffff"/>
-  <rect x="${pageX}" y="${page1Y}" width="${pageWidth}" height="${pageHeight}" fill="#ffffff"/>
-  <rect x="${pageX}" y="${page2Y}" width="${pageWidth}" height="${pageHeight}" fill="#ffffff"/>
+  <rect width="${canvasWidth}" height="${combinedRootHeight}" fill="#ffffff"/>
+  <rect x="${pageX}" y="${page1Y}" width="${pageWidth}" height="${page1Height}" fill="#ffffff"/>
+  <rect x="${pageX}" y="${page2Y}" width="${pageWidth}" height="${page2Height}" fill="#ffffff"/>
 
   <line x1="${pageX + 26}" y1="${headerTop}" x2="${pageX + pageWidth - 26}" y2="${headerTop}" stroke="#444" stroke-width="1"/>
   ${renderMountZonahMark(pageX + 42, headerTop + 6, 52)}
@@ -254,31 +266,31 @@ export function renderMfcSvg(input: Record<string, unknown>, pageNumber?: 1 | 2)
   <text x="${marginX + 216}" y="${signatureY - 2}" font-size="24" fill="#111827" font-family="'Segoe Script', 'Brush Script MT', cursive">${esc(officerSignature)}</text>
   <line x1="${marginX + 205}" y1="${signatureY + 6}" x2="${marginX + 420}" y2="${signatureY + 6}" stroke="#94a3b8" stroke-width="1"/>
 
-  <line x1="${pageX + 26}" y1="${page2Y + 36}" x2="${pageX + pageWidth - 26}" y2="${page2Y + 36}" stroke="#444" stroke-width="1"/>
-  ${renderMountZonahMark(pageX + 42, page2Y + 22, 52)}
-  ${renderMountZonahMark(pageX + pageWidth - 94, page2Y + 22, 52)}
-  <text x="${pageX + pageWidth / 2}" y="${page2Y + 48}" text-anchor="middle" font-size="31" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MOUNT ZONAH</text>
-  <text x="${pageX + pageWidth / 2}" y="${page2Y + 86}" text-anchor="middle" font-size="17" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MEDICAL FITNESS CERTIFICATE</text>
-  <line x1="${pageX + 26}" y1="${page2Y + 120}" x2="${pageX + pageWidth - 26}" y2="${page2Y + 120}" stroke="#444" stroke-width="1"/>
+  <line x1="${pageX + 26}" y1="${secondPageHeaderTop}" x2="${pageX + pageWidth - 26}" y2="${secondPageHeaderTop}" stroke="#444" stroke-width="1"/>
+  ${renderMountZonahMark(pageX + 42, secondPageHeaderTop + 6, 52)}
+  ${renderMountZonahMark(pageX + pageWidth - 94, secondPageHeaderTop + 6, 52)}
+  <text x="${pageX + pageWidth / 2}" y="${secondPageHeaderTop + 30}" text-anchor="middle" font-size="31" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MOUNT ZONAH</text>
+  <text x="${pageX + pageWidth / 2}" y="${secondPageHeaderTop + 68}" text-anchor="middle" font-size="17" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MEDICAL FITNESS CERTIFICATE</text>
+  <line x1="${pageX + 26}" y1="${secondPageHeaderTop + 84}" x2="${pageX + pageWidth - 26}" y2="${secondPageHeaderTop + 84}" stroke="#444" stroke-width="1"/>
   <text x="${pageX + pageWidth / 2}" y="${page2Y + 158}" text-anchor="middle" font-size="18" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Applicant Information</text>
 
-  <text x="${pageX + 58}" y="${page2Y + 206}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Name: ${esc(fieldMap["Name"])}</text>
-  <text x="${pageX + 58}" y="${page2Y + 240}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Sex: ${esc(fieldMap["Sex"])}</text>
-  <text x="${pageX + 58}" y="${page2Y + 274}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">D.O.B: ${esc(fieldMap["D.O.B"])}</text>
-  <text x="${pageX + 58}" y="${page2Y + 308}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">CID: ${esc(fieldMap["CID"])}</text>
-  <text x="${pageX + 58}" y="${page2Y + 342}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Number: ${esc(fieldMap["Number"])}</text>
-  <text x="${pageX + 58}" y="${page2Y + 376}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Weight: ${esc(fieldMap["Weight"])}</text>
-  <text x="${pageX + 58}" y="${page2Y + 410}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">MFC Reason: ${esc(fieldMap["MFC Reason"])}</text>
-  <text x="${pageX + 58}" y="${page2Y + 444}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Date: ${esc(fieldMap["Date"])}</text>
-  ${renderPhotoFrame(pageX + 520, secondPhotoY, 162, 178, photoUrl)}
+  <text x="${pageX + 58}" y="${page2FieldStartY}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Name: ${esc(fieldMap["Name"])}</text>
+  <text x="${pageX + 58}" y="${page2FieldStartY + page2FieldGap}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Sex: ${esc(fieldMap["Sex"])}</text>
+  <text x="${pageX + 58}" y="${page2FieldStartY + page2FieldGap * 2}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">D.O.B: ${esc(fieldMap["D.O.B"])}</text>
+  <text x="${pageX + 58}" y="${page2FieldStartY + page2FieldGap * 3}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">CID: ${esc(fieldMap["CID"])}</text>
+  <text x="${pageX + 58}" y="${page2FieldStartY + page2FieldGap * 4}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Number: ${esc(fieldMap["Number"])}</text>
+  <text x="${pageX + 58}" y="${page2FieldStartY + page2FieldGap * 5}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Weight: ${esc(fieldMap["Weight"])}</text>
+  <text x="${pageX + 58}" y="${page2FieldStartY + page2FieldGap * 6}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">MFC Reason: ${esc(fieldMap["MFC Reason"])}</text>
+  <text x="${pageX + 58}" y="${page2LastFieldY}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Date: ${esc(fieldMap["Date"])}</text>
+  ${renderPhotoFrame(pageX + 506, secondPhotoY, secondPhotoW, secondPhotoH, photoUrl)}
 
   <text x="${pageX + 58}" y="${descriptionY}" font-size="16" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Description:</text>
-  ${textLines(pageX + 182, descriptionY, summaryLines, { size: 14, weight: 700, color: "#111827", lineHeight: 22 })}
+  ${textLines(pageX + 182, descriptionTextY, summaryLines, { size: 14, weight: 700, color: "#111827", lineHeight: 22 })}
 
-  <text x="${pageX + 58}" y="${descriptionY + descriptionBlockHeight}" font-size="16" font-weight="800" fill="#2563eb" text-decoration="underline" font-family="'Times New Roman', serif">Name of Medical Officer:</text>
-  <text x="${pageX + 286}" y="${descriptionY + descriptionBlockHeight}" font-size="16" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">${esc(officerName)}</text>
-  <text x="${pageX + 58}" y="${descriptionY + descriptionBlockHeight + 38}" font-size="16" font-weight="800" fill="#2563eb" text-decoration="underline" font-family="'Times New Roman', serif">Signature of Medical Officer:</text>
-  <text x="${pageX + 318}" y="${descriptionY + descriptionBlockHeight + 35}" font-size="24" fill="#111827" font-family="'Segoe Script', 'Brush Script MT', cursive">${esc(officerSignature)}</text>
+  <text x="${pageX + 58}" y="${officerNameY}" font-size="16" font-weight="800" fill="#2563eb" text-decoration="underline" font-family="'Times New Roman', serif">Name of Medical Officer:</text>
+  <text x="${pageX + 286}" y="${officerNameY}" font-size="16" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">${esc(officerName)}</text>
+  <text x="${pageX + 58}" y="${officerSignatureY}" font-size="16" font-weight="800" fill="#2563eb" text-decoration="underline" font-family="'Times New Roman', serif">Signature of Medical Officer:</text>
+  <text x="${pageX + 318}" y="${officerSignatureY - 3}" font-size="24" fill="#111827" font-family="'Segoe Script', 'Brush Script MT', cursive">${esc(officerSignature)}</text>
 </svg>`;
 }
 
