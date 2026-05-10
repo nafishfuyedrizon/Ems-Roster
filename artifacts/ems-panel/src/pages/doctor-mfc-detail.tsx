@@ -291,7 +291,7 @@ function StaticReportRow({
   extra?: React.ReactNode;
 }) {
   return (
-    <div className="grid border-b border-slate-500 last:border-b-0 md:grid-cols-[minmax(0,1fr)_92px]">
+    <div className="grid border-b border-slate-500 last:border-b-0 md:grid-cols-[minmax(0,1fr)_116px]">
       <div className="border-b border-slate-500 p-2 md:border-b-0 md:border-r">
         <div className="mb-1 text-[15px] font-bold text-slate-900" style={{ fontFamily: SECTION_FONT }}>
           {title}
@@ -316,7 +316,7 @@ function StaticEyeReportRow({
   result: string;
 }) {
   return (
-    <div className="grid border-b border-slate-500 last:border-b-0 md:grid-cols-[minmax(0,1fr)_92px]">
+    <div className="grid border-b border-slate-500 last:border-b-0 md:grid-cols-[minmax(0,1fr)_116px]">
       <div className="border-b border-slate-500 p-2 md:border-b-0 md:border-r">
         <div className="mb-1 text-[15px] font-bold text-slate-900" style={{ fontFamily: SECTION_FONT }}>
           {title}
@@ -359,7 +359,7 @@ function EditableEyeReportRow({
   onResultChange: (value: string) => void;
 }) {
   return (
-    <div className="grid border-b border-slate-500 last:border-b-0 md:grid-cols-[minmax(0,1fr)_92px]">
+    <div className="grid border-b border-slate-500 last:border-b-0 md:grid-cols-[minmax(0,1fr)_116px]">
       <div className="border-b border-slate-500 p-2 md:border-b-0 md:border-r">
         <div className="mb-1 text-[15px] font-bold text-slate-900" style={{ fontFamily: SECTION_FONT }}>
           {title}
@@ -424,7 +424,7 @@ function StaticMfcPageOne({ draft }: { draft: MfcDraft }) {
             Test Reports:
           </div>
           <div className="border border-slate-500">
-            <div className="grid bg-slate-100 text-[15px] font-bold text-[#4f74d6] md:grid-cols-[minmax(0,1fr)_92px]" style={{ fontFamily: TABLE_HEADER_FONT }}>
+            <div className="grid bg-slate-100 text-[15px] font-bold text-[#4f74d6] md:grid-cols-[minmax(0,1fr)_116px]" style={{ fontFamily: TABLE_HEADER_FONT }}>
               <div className="border-b border-slate-500 p-2 md:border-b-0 md:border-r">Report Title</div>
               <div className="p-2 text-center">Result</div>
             </div>
