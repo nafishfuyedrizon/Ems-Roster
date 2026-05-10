@@ -602,39 +602,40 @@ router.get("/mfc-cases", requireDoctorAuth, async (_req, res) => {
 });
 
 router.post("/mfc-cases", requireDoctorAuth, async (req, res) => {
-  await ensureMedicalSeeds();
-  const session = doctorActor(req);
-  const patientId = await resolveOrCreatePatient({
-    cid: req.body?.cid,
-    name: String(req.body?.applicantName ?? ""),
-    phone: req.body?.number,
-    sex: req.body?.sex,
-    dateOfBirth: req.body?.dateOfBirth,
-    weight: req.body?.weight,
-  });
+  try {
+    await ensureMedicalSeeds();
+    const session = doctorActor(req);
+    const patientId = await resolveOrCreatePatient({
+      cid: req.body?.cid,
+      name: String(req.body?.applicantName ?? ""),
+      phone: req.body?.number,
+      sex: req.body?.sex,
+      dateOfBirth: req.body?.dateOfBirth,
+      weight: req.body?.weight,
+    });
 
-  const [mfcPrice] = await db.select().from(priceCatalogTable).where(eq(priceCatalogTable.name, "MFC")).limit(1);
-  if (mfcPrice && !rankMeetsRequirement(session.rank, mfcPrice.requiredRank)) {
-    return res.status(403).json({ error: explainRankRequirement(mfcPrice.requiredRank) ?? "Insufficient medical rank" });
-  }
+    const [mfcPrice] = await db.select().from(priceCatalogTable).where(eq(priceCatalogTable.name, "MFC")).limit(1);
+    if (mfcPrice && !rankMeetsRequirement(session.rank, mfcPrice.requiredRank)) {
+      return res.status(403).json({ error: explainRankRequirement(mfcPrice.requiredRank) ?? "Insufficient medical rank" });
+    }
 
-  const [inserted] = await db.insert(mfcCasesTable).values({
-    patientId,
-    appointmentId: typeof req.body?.appointmentId === "number" ? req.body.appointmentId : null,
-    doctorAccountId: session.doctorAccountId,
-    sex: req.body?.sex ?? null,
-    templateVariant: (req.body?.templateVariant as string) || "male",
-    applicantName: String(req.body?.applicantName ?? "Unknown"),
-    cid: req.body?.cid ?? null,
-    number: req.body?.number ?? null,
-    weight: req.body?.weight ?? null,
-    dateOfBirth: req.body?.dateOfBirth ?? null,
-    mfcReason: req.body?.mfcReason ?? null,
-    examDateText: req.body?.examDateText ?? null,
-    bloodTest: req.body?.bloodTest ?? null,
-    bloodResult: req.body?.bloodResult ?? null,
-    mriTest: req.body?.mriTest ?? null,
-    mriResult: req.body?.mriResult ?? null,
+    const [inserted] = await db.insert(mfcCasesTable).values({
+      patientId,
+      appointmentId: typeof req.body?.appointmentId === "number" ? req.body.appointmentId : null,
+      doctorAccountId: session.doctorAccountId,
+      sex: req.body?.sex ?? null,
+      templateVariant: (req.body?.templateVariant as string) || "male",
+      applicantName: String(req.body?.applicantName ?? "Unknown"),
+      cid: req.body?.cid ?? null,
+      number: req.body?.number ?? null,
+      weight: req.body?.weight ?? null,
+      dateOfBirth: req.body?.dateOfBirth ?? null,
+      mfcReason: req.body?.mfcReason ?? null,
+      examDateText: req.body?.examDateText ?? null,
+      bloodTest: req.body?.bloodTest ?? null,
+      bloodResult: req.body?.bloodResult ?? null,
+      mriTest: req.body?.mriTest ?? null,
+      mriResult: req.body?.mriResult ?? null,
       eyeTest: req.body?.eyeTest ?? null,
       eyeResult: req.body?.eyeResult ?? null,
       finalSummary: req.body?.finalSummary ?? null,
@@ -644,8 +645,15 @@ router.post("/mfc-cases", requireDoctorAuth, async (req, res) => {
       priceAmount: mfcPrice?.amount ?? 3000,
       status: "draft",
     }).$returningId();
-  await createMfcEvent(inserted.id, "created", "doctor", session.callSign, "MFC case created");
-  return res.status(201).json({ id: inserted.id });
+    await createMfcEvent(inserted.id, "created", "doctor", session.callSign, "MFC case created");
+    return res.status(201).json({ id: inserted.id });
+  } catch (error) {
+    console.error("[DOCTOR-MFC] Failed to create MFC case:", error);
+    const message = error instanceof Error && error.message.trim()
+      ? error.message.trim()
+      : "Failed to create MFC case";
+    return res.status(500).json({ error: message });
+  }
 });
 
 router.get("/mfc-cases/:id", requireDoctorAuth, async (req, res) => {
