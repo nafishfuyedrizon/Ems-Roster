@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Download, LoaderCircle, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { doctorFetch } from "@/lib/doctor-api";
 import { withApiPath } from "@/lib/api-base";
 import { useToast } from "@/hooks/use-toast";
@@ -32,12 +29,7 @@ export function PrintVersionsPanel({
   documentId: number;
   customDownloads?: Array<{ label: string; onClick: () => void | Promise<void> }>;
 }) {
-  const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [externalImageUrl, setExternalImageUrl] = useState("");
-  const [latestGeneratedUrl, setLatestGeneratedUrl] = useState<string | null>(null);
-  const [latestPageLinks, setLatestPageLinks] = useState<Array<{ page: number; url: string }>>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [activeDownload, setActiveDownload] = useState<string | null>(null);
   const [completedDownload, setCompletedDownload] = useState<string | null>(null);
 
@@ -51,27 +43,6 @@ export function PrintVersionsPanel({
     queryKey: ["print-versions", documentType, documentId],
     queryFn: () => doctorFetch(`/documents/${documentType}/${documentId}/print-versions`),
   });
-
-  const generateVersion = async () => {
-    setIsGenerating(true);
-    try {
-      const response = await doctorFetch<{ directUrl: string; persisted?: boolean; pageLinks?: Array<{ page: number; url: string }> }>(`/documents/${documentType}/${documentId}/print-version`, {
-        method: "POST",
-        body: JSON.stringify({ externalImageUrl: externalImageUrl || null }),
-      });
-      setLatestGeneratedUrl(response.directUrl);
-      setLatestPageLinks(response.pageLinks ?? []);
-      await queryClient.invalidateQueries({ queryKey: ["print-versions", documentType, documentId] });
-      toast({
-        title: response.persisted === false ? "Direct print link generated" : "Print version generated",
-        description: response.directUrl,
-      });
-    } catch (error) {
-      toast({ title: "Failed to generate print version", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   const buildPageDownloadUrl = (page: number) =>
     `${withApiPath(`/documents/${documentType}/${documentId}/page/${page}.png`)}?download=1`;
@@ -136,7 +107,7 @@ export function PrintVersionsPanel({
       <button
         key={download.key}
         type="button"
-        disabled={isGenerating || isProcessing || activeDownload !== null}
+        disabled={isProcessing || activeDownload !== null}
         onClick={() => void handleDownload(download)}
         className={[
           "group relative overflow-hidden rounded-2xl border px-5 py-4 text-left transition-all duration-300",
@@ -197,44 +168,9 @@ export function PrintVersionsPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-5 p-5">
-        <div className="space-y-2">
-          <Label htmlFor="external-image-url" className="text-xs font-mono uppercase tracking-[0.32em] text-cyan-100/70">External Image URL (optional)</Label>
-          <Input
-            id="external-image-url"
-            value={externalImageUrl}
-            onChange={(event) => setExternalImageUrl(event.target.value)}
-            placeholder="https://..."
-            className="h-12 border-cyan-400/20 bg-slate-950/50 font-mono text-cyan-50 placeholder:text-slate-500 focus-visible:ring-cyan-400/30"
-          />
-        </div>
-        <Button
-          onClick={() => void generateVersion()}
-          disabled={isGenerating || activeDownload !== null}
-          className="h-14 rounded-2xl border border-cyan-200/15 bg-[linear-gradient(180deg,#22d3ee,#0891b2)] px-6 font-mono uppercase tracking-[0.32em] text-slate-950 shadow-[0_18px_28px_rgba(8,145,178,0.34),inset_0_1px_0_rgba(255,255,255,0.45)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_36px_rgba(8,145,178,0.42),inset_0_1px_0_rgba(255,255,255,0.55)] disabled:translate-y-0 disabled:opacity-80"
-        >
-          {isGenerating ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-          {isGenerating ? "Processing Print Version" : "Generate Print Version"}
-        </Button>
         <div className="grid gap-3">
           {downloadButtons.map((download) => renderDownloadButton(download))}
         </div>
-        {latestGeneratedUrl ? (
-          <div className="rounded-2xl border border-cyan-400/16 bg-slate-950/35 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-            <p className="text-sm font-semibold text-white">Latest generated link</p>
-            <a href={latestGeneratedUrl} target="_blank" rel="noreferrer" className="mt-1 block break-all text-xs text-cyan-300 underline">
-              {latestGeneratedUrl}
-            </a>
-            {latestPageLinks.length > 0 ? (
-              <div className="mt-3 space-y-2">
-                {latestPageLinks.map((link) => (
-                  <a key={link.page} href={link.url} target="_blank" rel="noreferrer" className="block break-all text-xs text-cyan-400 underline">
-                    {`Page ${link.page} link: ${link.url}`}
-                  </a>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
         <div className="space-y-3">
           {(data ?? []).map((version) => (
             <div key={version.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
