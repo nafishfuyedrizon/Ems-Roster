@@ -29,9 +29,21 @@ const REBUILD_BACKFILL = process.env.REBUILD_BACKFILL === "1";
 const BACKFILL_PAGE_DELAY_MS = Number(process.env.BACKFILL_PAGE_DELAY_MS ?? 25);
 const BACKFILL_OVERLAP_DAYS = Number(process.env.BACKFILL_OVERLAP_DAYS ?? 3);
 const MEDICAL_IMPORT_DAYS = Number(process.env.MEDICAL_IMPORT_DAYS ?? 7);
+const MEDICAL_CHANNEL_IDS = [
+  DOCTOR_APPOINTMENT_CHANNEL_ID,
+  MEDICAL_RECORD_HISTORY_CHANNEL_ID,
+  MFC_DUMP_CHANNEL_ID,
+  PRESCRIPTION_HISTORY_CHANNEL_ID,
+].filter((value): value is string => Boolean(value));
+const DUTY_SYNC_ENABLED = Boolean(CHANNEL_ID);
 
-if (!BOT_TOKEN || !CHANNEL_ID) {
-  console.error("[BOT] Missing DISCORD_BOT_TOKEN or DISCORD_TIMESTAMP_CHANNEL_ID");
+if (!BOT_TOKEN) {
+  console.error("[BOT] Missing DISCORD_BOT_TOKEN");
+  process.exit(1);
+}
+
+if (!DUTY_SYNC_ENABLED && MEDICAL_CHANNEL_IDS.length === 0) {
+  console.error("[BOT] No Discord sync channels configured. Set DISCORD_TIMESTAMP_CHANNEL_ID or at least one doctor medical channel ID.");
   process.exit(1);
 }
 
@@ -831,26 +843,37 @@ const client = new Client({
 
 client.once(Events.ClientReady, async (c) => {
   console.log(`[BOT] 🟢 Logged in as ${c.user.tag}`);
-  console.log(`[BOT] 👁  Watching channel ID: ${CHANNEL_ID}`);
+  if (DUTY_SYNC_ENABLED) {
+    console.log(`[BOT] 👁  Duty sync watching channel ID: ${CHANNEL_ID}`);
+  } else {
+    console.log("[BOT] Duty sync disabled for this process.");
+  }
+  if (MEDICAL_CHANNEL_IDS.length > 0) {
+    console.log(`[BOT] 🩺 Medical sync watching ${MEDICAL_CHANNEL_IDS.length} channel(s).`);
+  }
 
   try {
-    const channel = await c.channels.fetch(CHANNEL_ID!);
-    if (!channel || !channel.isTextBased()) {
-      console.error("[BACKFILL] Could not fetch channel or channel is not text-based");
-      return;
+    if (DUTY_SYNC_ENABLED) {
+      const channel = await c.channels.fetch(CHANNEL_ID!);
+      if (!channel || !channel.isTextBased()) {
+        console.error("[BACKFILL] Could not fetch duty sync channel or channel is not text-based");
+      } else {
+        await runBackfill(channel as TextChannel);
+        const latestSyncedTimestamp = await rebuildCurrentActiveSessions(channel as TextChannel);
+        startupSyncComplete = true;
+        if (pendingLiveMessages.length > 0) {
+          const queued = pendingLiveMessages
+            .splice(0)
+            .filter((message) => message.createdTimestamp > latestSyncedTimestamp)
+            .sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+          console.log(`[BOT] Processing ${queued.length} queued live message(s) after startup catch-up...`);
+          for (const message of queued) await processMessage(message);
+        }
+        console.log("[BOT] ✅ Duty startup catch-up complete. Live tracking is active.");
+      }
+    } else {
+      startupSyncComplete = true;
     }
-    await runBackfill(channel as TextChannel);
-    const latestSyncedTimestamp = await rebuildCurrentActiveSessions(channel as TextChannel);
-    startupSyncComplete = true;
-    if (pendingLiveMessages.length > 0) {
-      const queued = pendingLiveMessages
-        .splice(0)
-        .filter((message) => message.createdTimestamp > latestSyncedTimestamp)
-        .sort((a, b) => a.createdTimestamp - b.createdTimestamp);
-      console.log(`[BOT] Processing ${queued.length} queued live message(s) after startup catch-up...`);
-      for (const message of queued) await processMessage(message);
-    }
-    console.log("[BOT] ✅ Startup catch-up complete. Live tracking is active.");
 
     const medicalChannels: Array<[string | undefined, (message: Message) => Promise<void>]> = [
       [DOCTOR_APPOINTMENT_CHANNEL_ID, syncDoctorAppointmentMessage],
@@ -874,7 +897,7 @@ client.once(Events.ClientReady, async (c) => {
 
 client.on(Events.MessageCreate, async (message) => {
   try {
-    if (message.channelId === CHANNEL_ID) {
+    if (DUTY_SYNC_ENABLED && message.channelId === CHANNEL_ID) {
       if (!startupSyncComplete) {
         pendingLiveMessages.push(message);
         return;
@@ -883,7 +906,7 @@ client.on(Events.MessageCreate, async (message) => {
       return;
     }
 
-    if ([DOCTOR_APPOINTMENT_CHANNEL_ID, MEDICAL_RECORD_HISTORY_CHANNEL_ID, MFC_DUMP_CHANNEL_ID, PRESCRIPTION_HISTORY_CHANNEL_ID].includes(message.channelId)) {
+    if (MEDICAL_CHANNEL_IDS.includes(message.channelId)) {
       await processMedicalMessage(message);
     }
   } catch (err) {
@@ -894,7 +917,7 @@ client.on(Events.MessageCreate, async (message) => {
 client.on(Events.MessageUpdate, async (_oldMessage, newMessage) => {
   try {
     if (!newMessage || newMessage.partial) return;
-    if ([DOCTOR_APPOINTMENT_CHANNEL_ID, MEDICAL_RECORD_HISTORY_CHANNEL_ID, MFC_DUMP_CHANNEL_ID, PRESCRIPTION_HISTORY_CHANNEL_ID].includes(newMessage.channelId)) {
+    if (MEDICAL_CHANNEL_IDS.includes(newMessage.channelId)) {
       await processMedicalMessage(newMessage as Message);
     }
   } catch (err) {
