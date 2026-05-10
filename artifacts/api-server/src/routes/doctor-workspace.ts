@@ -32,6 +32,10 @@ import { ensureMedicalSeeds } from "../lib/medical-seed";
 const router = Router();
 const MDT_API_BASE = process.env.MDT_API_BASE?.trim() || "https://mdt-server.legacyrpbd.com";
 const MDT_CACHE_TTL_MS = 5 * 60 * 1000;
+const MDT_LOGIN_CID = process.env.MDT_LOGIN_CID?.trim() || "";
+const MDT_LOGIN_PASSWORD = process.env.MDT_LOGIN_PASSWORD?.trim() || "";
+const MDT_ACCESS_TOKEN = process.env.MDT_ACCESS_TOKEN?.trim() || "";
+const MDT_REFRESH_TOKEN = process.env.MDT_REFRESH_TOKEN?.trim() || "";
 
 type MdtCharacter = {
   character_id: number;
@@ -47,12 +51,45 @@ type MdtCharacter = {
   mugshot: string | null;
 };
 
+type MdtVehicle = {
+  id?: number;
+  name?: string | null;
+  plate?: string | null;
+  photo?: string | null;
+};
+
+type MdtPrior = {
+  arrest_id: number;
+  incident_id: number;
+  time: number | null;
+  fine: number | null;
+  plea: string | null;
+  arrested_date_time: string | null;
+  incident_title: string | null;
+  charges?: Array<{
+    counts: number | null;
+    enhancements: string | null;
+    label: string | null;
+    name: string | null;
+    type: string | null;
+  }>;
+};
+
 let mdtCharactersCache:
   | {
       expiresAt: number;
       rows: MdtCharacter[];
     }
   | null = null;
+let mdtAuthCache: {
+  accessToken: string;
+  refreshToken: string | null;
+} | null = MDT_ACCESS_TOKEN
+  ? {
+      accessToken: MDT_ACCESS_TOKEN,
+      refreshToken: MDT_REFRESH_TOKEN || null,
+    }
+  : null;
 
 function doctorActor(req: import("express").Request) {
   return (req as any).doctorSession as {
@@ -89,6 +126,129 @@ async function getMdtCharacters() {
     rows,
   };
   return rows;
+}
+
+async function loginToMdt() {
+  if (!MDT_LOGIN_CID || !MDT_LOGIN_PASSWORD) {
+    throw new Error("MDT authenticated vehicle lookup is not configured.");
+  }
+
+  const response = await fetch(`${MDT_API_BASE}/login/authenticate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      cid: MDT_LOGIN_CID,
+      password: MDT_LOGIN_PASSWORD,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`MDT login failed with status ${response.status}`);
+  }
+
+  const payload = (await response.json()) as {
+    accessToken?: string;
+    refreshToken?: string;
+  };
+
+  if (!payload.accessToken) {
+    throw new Error("MDT login did not return an access token.");
+  }
+
+  mdtAuthCache = {
+    accessToken: payload.accessToken,
+    refreshToken: payload.refreshToken ?? null,
+  };
+  return mdtAuthCache;
+}
+
+async function refreshMdtToken() {
+  const refreshToken = mdtAuthCache?.refreshToken ?? MDT_REFRESH_TOKEN ?? null;
+  if (!refreshToken) {
+    return loginToMdt();
+  }
+
+  const response = await fetch(`${MDT_API_BASE}/login/refresh-token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  if (!response.ok) {
+    return loginToMdt();
+  }
+
+  const payload = (await response.json()) as {
+    accessToken?: string;
+    refreshToken?: string;
+  };
+
+  if (!payload.accessToken) {
+    return loginToMdt();
+  }
+
+  mdtAuthCache = {
+    accessToken: payload.accessToken,
+    refreshToken: payload.refreshToken ?? refreshToken,
+  };
+  return mdtAuthCache;
+}
+
+async function getMdtAuthToken() {
+  if (mdtAuthCache?.accessToken) return mdtAuthCache.accessToken;
+  if (MDT_ACCESS_TOKEN) {
+    mdtAuthCache = {
+      accessToken: MDT_ACCESS_TOKEN,
+      refreshToken: MDT_REFRESH_TOKEN || null,
+    };
+    return MDT_ACCESS_TOKEN;
+  }
+  return (await loginToMdt()).accessToken;
+}
+
+async function fetchMdtAuthedJson<T>(path: string) {
+  let token = await getMdtAuthToken();
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await fetch(`${MDT_API_BASE}${path}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.ok) {
+      return (await response.json()) as T;
+    }
+
+    if ((response.status === 401 || response.status === 403) && attempt === 0) {
+      token = (await refreshMdtToken()).accessToken;
+      continue;
+    }
+
+    throw new Error(`MDT authenticated request failed with status ${response.status}`);
+  }
+
+  throw new Error("MDT authenticated request failed.");
+}
+
+async function getMdtVehicles(characterId: number) {
+  try {
+    return await fetchMdtAuthedJson<MdtVehicle[]>(`/characters/${characterId}/vehicles`);
+  } catch {
+    return [];
+  }
+}
+
+async function getMdtPriors(characterId: number) {
+  const response = await fetch(`${MDT_API_BASE}/public/arrests/suspect/${characterId}`);
+  if (!response.ok) {
+    throw new Error(`MDT public priors lookup failed with status ${response.status}`);
+  }
+  return (await response.json()) as MdtPrior[];
 }
 
 function patientMatchScore(
@@ -331,6 +491,62 @@ router.get("/mdt/characters/search", requireDoctorAuth, async (req, res) => {
   );
 
   return res.json({ query, results });
+});
+
+router.get("/mdt/characters/:id", requireDoctorAuth, async (req, res) => {
+  const characterId = Number(req.params.id);
+  if (!Number.isFinite(characterId) || characterId <= 0) {
+    return res.status(400).json({ error: "Invalid character id." });
+  }
+
+  const characters = await getMdtCharacters();
+  const character = characters.find((row) => row.character_id === characterId);
+  if (!character) {
+    return res.status(404).json({ error: "MDT character not found." });
+  }
+
+  const [priors, vehicles] = await Promise.all([
+    getMdtPriors(characterId),
+    getMdtVehicles(characterId),
+  ]);
+
+  return res.json({
+    characterId: character.character_id,
+    name: `${character.first_name} ${character.last_name}`.trim(),
+    firstName: character.first_name,
+    lastName: character.last_name,
+    cid: String(character.character_id),
+    gender: character.gender === 1 ? "Female" : "Male",
+    phone: character.phone_number,
+    dateOfBirth: character.date_of_birth,
+    jobName: character.job_name,
+    departmentName: character.department_name,
+    positionName: character.position_name,
+    licenceIdentifier: character.licence_identifier,
+    mugshot: character.mugshot,
+    vehicles: vehicles.map((vehicle) => ({
+      id: vehicle.id ?? null,
+      name: vehicle.name ?? "Unknown vehicle",
+      plate: vehicle.plate ?? null,
+      photo: vehicle.photo ?? null,
+    })),
+    priors: priors.map((prior) => ({
+      arrestId: prior.arrest_id,
+      incidentId: prior.incident_id,
+      title: prior.incident_title ?? `Arrest ${prior.arrest_id}`,
+      arrestedAt: prior.arrested_date_time,
+      time: prior.time,
+      fine: prior.fine,
+      plea: prior.plea,
+      charges: (prior.charges ?? []).map((charge) => ({
+        label: charge.label,
+        name: charge.name,
+        type: charge.type,
+        counts: charge.counts,
+        enhancements: charge.enhancements,
+      })),
+    })),
+  });
 });
 
 router.get("/patients/search", requireDoctorAuth, async (req, res) => {

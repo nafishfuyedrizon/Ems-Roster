@@ -61,6 +61,43 @@ type MdtSearchResponse = {
   results: MdtSearchResult[];
 };
 
+type MdtCharacterDetail = {
+  characterId: number;
+  cid: string;
+  dateOfBirth: string | null;
+  departmentName: string | null;
+  firstName: string;
+  gender: string;
+  jobName: string | null;
+  licenceIdentifier: string | null;
+  mugshot: string | null;
+  name: string;
+  phone: string | null;
+  positionName: string | null;
+  priors: Array<{
+    arrestId: number;
+    arrestedAt: string | null;
+    charges: Array<{
+      counts: number | null;
+      enhancements: string | null;
+      label: string | null;
+      name: string | null;
+      type: string | null;
+    }>;
+    fine: number | null;
+    incidentId: number;
+    plea: string | null;
+    time: number | null;
+    title: string;
+  }>;
+  vehicles: Array<{
+    id: number | null;
+    name: string;
+    photo: string | null;
+    plate: string | null;
+  }>;
+};
+
 function formatPatientMeta(label: string, value: string | null | undefined) {
   return (
     <div>
@@ -99,6 +136,11 @@ export default function DoctorPatients() {
     queryKey: ["doctor-mdt-search", deferredQuery],
     queryFn: () => doctorFetch(`/mdt/characters/search?q=${encodeURIComponent(deferredQuery)}`),
     enabled: deferredQuery.length >= 1,
+  });
+  const { data: selectedDetail, isFetching: isFetchingDetail } = useQuery<MdtCharacterDetail>({
+    queryKey: ["doctor-mdt-character-detail", selectedCharacterId],
+    queryFn: () => doctorFetch(`/mdt/characters/${selectedCharacterId}`),
+    enabled: Number.isFinite(selectedCharacterId) && selectedCharacterId !== null,
   });
 
   const searchResults = searchData?.results ?? [];
@@ -264,6 +306,71 @@ export default function DoctorPatients() {
                             <span>{selectedResult.phone || "No phone listed"}</span>
                           </div>
                         </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-[0.95fr,1.05fr]">
+                    <Card className="border-border/40 bg-background/30">
+                      <CardHeader>
+                        <CardTitle>Cars</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {isFetchingDetail ? (
+                          <p className="text-sm text-muted-foreground">Loading vehicle registry...</p>
+                        ) : selectedDetail?.vehicles.length ? (
+                          <div className="flex flex-wrap gap-2">
+                            {selectedDetail.vehicles.map((vehicle, index) => (
+                              <Badge key={`${vehicle.plate || vehicle.name}-${index}`} variant="secondary" className="px-3 py-1 text-xs">
+                                {vehicle.name}{vehicle.plate ? ` (${vehicle.plate})` : ""}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No vehicle data available from the current MDT source.</p>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border-border/40 bg-background/30">
+                      <CardHeader>
+                        <CardTitle>Police Record History</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {isFetchingDetail ? (
+                          <p className="text-sm text-muted-foreground">Loading prior arrest history...</p>
+                        ) : selectedDetail?.priors.length ? (
+                          selectedDetail.priors.slice(0, 4).map((prior) => (
+                            <div key={prior.arrestId} className="rounded-xl border border-border/40 bg-background/40 p-4">
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                  <p className="font-semibold text-foreground">{prior.title}</p>
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    {prior.arrestedAt || "Unknown date"} · {prior.plea || "Unknown plea"}
+                                  </p>
+                                </div>
+                                <Badge variant="outline">
+                                  {prior.time ?? 0} months · ${prior.fine ?? 0}
+                                </Badge>
+                              </div>
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {prior.charges.map((charge, index) => (
+                                  <Badge
+                                    key={`${prior.arrestId}-${charge.label || charge.name || index}`}
+                                    variant={charge.type === "Misdemeanor" ? "secondary" : "destructive"}
+                                    className="max-w-full whitespace-normal text-left text-[11px]"
+                                  >
+                                    {charge.name || charge.label || "Charge"}
+                                    {charge.counts ? ` x${charge.counts}` : ""}
+                                    {charge.enhancements ? ` (${charge.enhancements})` : ""}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No police record history was returned for this citizen.</p>
+                        )}
                       </CardContent>
                     </Card>
                   </div>
