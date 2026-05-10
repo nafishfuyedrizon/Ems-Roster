@@ -16,6 +16,7 @@ import {
   priceCatalogTable,
 } from "@workspace/db";
 import { renderMedicalRecordSvg, renderMfcSvg, renderPrescriptionSvg } from "../lib/document-render";
+import { generateMfcTemplateDocx } from "../lib/mfc-docx-template";
 import { requireDoctorAuth } from "../lib/doctor-auth";
 import {
   buildAbsoluteUrl,
@@ -1099,6 +1100,22 @@ router.get("/documents/:type/:id/image.png", async (req, res) => {
     res.setHeader("Content-Disposition", `attachment; filename="${documentType}-${documentId}.png"`);
   }
   return res.send(png);
+});
+
+router.get("/documents/:type/:id/template.docx", async (req, res) => {
+  const documentType = String(req.params.type);
+  const documentId = Number(req.params.id);
+  if (documentType !== "mfc") return res.status(404).send("Not found");
+  const document = await loadDocumentPayload(documentType, documentId);
+  if (!document) return res.status(404).send("Not found");
+
+  const docx = await generateMfcTemplateDocx(document.row as Record<string, unknown>);
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+  res.setHeader("Cache-Control", "public, max-age=300");
+  if (req.query.download !== undefined) {
+    res.setHeader("Content-Disposition", `attachment; filename="${documentType}-${documentId}-template.docx"`);
+  }
+  return res.send(docx);
 });
 
 router.get("/documents/:type/:id/page/:page.png", async (req, res) => {

@@ -27,6 +27,7 @@ import DoctorPrescriptions from "@/pages/doctor-prescriptions";
 import DoctorPrescriptionDetail from "@/pages/doctor-prescription-detail";
 import DoctorMedicines from "@/pages/doctor-medicines";
 import DoctorPrices from "@/pages/doctor-prices";
+import DocxMfcPreview from "@/pages/docx-mfc-preview";
 
 const queryClient = new QueryClient();
 setBaseUrl(API_ORIGIN);
@@ -74,6 +75,7 @@ function Router() {
       <Route path="/doctor/prescriptions/:id" component={DoctorPrescriptionDetail} />
       <Route path="/doctor/medicines" component={DoctorMedicines} />
       <Route path="/doctor/prices" component={DoctorPrices} />
+      <Route path="/preview/mfc-docx/:id" component={DocxMfcPreview} />
       <Route component={NotFound} />
     </Switch>
   );
