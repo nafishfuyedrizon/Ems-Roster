@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { DoctorPageShell, useDoctorGuard } from "@/pages/doctor-shared";
@@ -520,6 +520,7 @@ export default function DoctorMfcDetail() {
   const id = Number(params?.id);
   const { doctor } = useDoctorGuard();
   const { toast } = useToast();
+  const photoUploadInputRef = useRef<HTMLInputElement | null>(null);
   const { data } = useQuery<any>({
     queryKey: ["doctor-mfc-detail", id],
     queryFn: () => doctorFetch(`/mfc-cases/${id}`),
@@ -576,6 +577,37 @@ export default function DoctorMfcDetail() {
 
   const setField = (field: string, value: string) => {
     setDraft((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file",
+        description: "Please upload an image file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const dataUrl = await dataUrlFromBlob(file);
+      setResolvedPhotoUrl(dataUrl);
+      setField("sourceAttachmentUrl", dataUrl);
+      toast({
+        title: "Photo uploaded",
+        description: `${file.name} is ready for preview and download.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Photo upload failed",
+        description: error instanceof Error ? error.message : "Could not read the selected image.",
+        variant: "destructive",
+      });
+    }
   };
 
   const buildDraftPayload = () => {
@@ -639,9 +671,18 @@ export default function DoctorMfcDetail() {
           <CardHeader>
             <CardTitle>MFC Editor</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-end">
+          <CardContent className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:items-end">
             <div className="space-y-2">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">Applicant Photo URL</div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">Applicant Photo URL</div>
+                <button
+                  type="button"
+                  onClick={() => photoUploadInputRef.current?.click()}
+                  className="inline-flex items-center rounded-md border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-cyan-100 transition hover:border-cyan-300/60 hover:bg-cyan-400/18"
+                >
+                  Upload Photo
+                </button>
+              </div>
               <Input
                 value={valueOf(draft, "sourceAttachmentUrl")}
                 onChange={(event) => setField("sourceAttachmentUrl", event.target.value)}
@@ -651,6 +692,14 @@ export default function DoctorMfcDetail() {
                 autoCapitalize="none"
                 autoComplete="off"
               />
+              <input
+                ref={photoUploadInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => void handlePhotoUpload(event)}
+              />
+              <div className="text-[11px] text-muted-foreground">You can use either an image link or upload a photo file.</div>
             </div>
             <Button onClick={() => void save()}>Save Changes</Button>
             <Button variant="outline" onClick={() => void complete()}>Complete MFC</Button>
