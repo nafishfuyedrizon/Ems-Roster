@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
+import { toPng } from "html-to-image";
 import { DoctorPageShell, useDoctorGuard } from "@/pages/doctor-shared";
 import { doctorFetch } from "@/lib/doctor-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { PrintVersionsPanel } from "@/pages/doctor-components";
 import type { DoctorSession } from "@/hooks/use-doctor-auth";
+import { useToast } from "@/hooks/use-toast";
 
 const CERTIFICATE_FONT = '"Times New Roman", serif';
 
@@ -242,6 +244,9 @@ export default function DoctorMfcDetail() {
   const [, params] = useRoute("/doctor/mfc/:id");
   const id = Number(params?.id);
   const { doctor } = useDoctorGuard();
+  const { toast } = useToast();
+  const page1Ref = useRef<HTMLElement | null>(null);
+  const page2Ref = useRef<HTMLElement | null>(null);
   const { data } = useQuery<any>({
     queryKey: ["doctor-mfc-detail", id],
     queryFn: () => doctorFetch(`/mfc-cases/${id}`),
@@ -303,6 +308,31 @@ export default function DoctorMfcDetail() {
     await queryClient.invalidateQueries({ queryKey: ["doctor-mfc-detail", id] });
   };
 
+  const downloadPreviewPage = async (page: 1 | 2) => {
+    const target = page === 1 ? page1Ref.current : page2Ref.current;
+    if (!target) return;
+
+    try {
+      const dataUrl = await toPng(target, {
+        cacheBust: true,
+        pixelRatio: 3,
+        backgroundColor: "#fffdfa",
+      });
+      const anchor = document.createElement("a");
+      anchor.href = dataUrl;
+      anchor.download = `mfc-${id}-page-${page}.png`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+    } catch (error) {
+      toast({
+        title: `Failed to download page ${page}`,
+        description: error instanceof Error ? error.message : "Could not capture the preview image.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <DoctorPageShell>
       <div className="mx-auto flex max-w-[1180px] flex-col gap-6">
@@ -329,6 +359,7 @@ export default function DoctorMfcDetail() {
         </Card>
 
         <div className="space-y-6">
+          <div ref={(node) => { page1Ref.current = node; }}>
           <Paper>
             <CertificateHeader />
             <div className="px-12 pb-8 pt-4" style={{ fontFamily: CERTIFICATE_FONT }}>
@@ -394,7 +425,9 @@ export default function DoctorMfcDetail() {
               </div>
             </div>
           </Paper>
+          </div>
 
+          <div ref={(node) => { page2Ref.current = node; }}>
           <Paper>
             <CertificateHeader />
             <div className="px-12 pb-8 pt-4" style={{ fontFamily: CERTIFICATE_FONT }}>
@@ -462,9 +495,17 @@ export default function DoctorMfcDetail() {
               </div>
             </div>
           </Paper>
+          </div>
         </div>
 
-        <PrintVersionsPanel documentType="mfc" documentId={id} />
+        <PrintVersionsPanel
+          documentType="mfc"
+          documentId={id}
+          customDownloads={[
+            { label: "Download Page 1", onClick: () => downloadPreviewPage(1) },
+            { label: "Download Page 2", onClick: () => downloadPreviewPage(2) },
+          ]}
+        />
       </div>
     </DoctorPageShell>
   );

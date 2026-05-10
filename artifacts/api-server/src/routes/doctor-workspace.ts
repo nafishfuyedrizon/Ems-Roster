@@ -388,10 +388,62 @@ async function loadDocumentPageSvg(documentType: string, documentId: number, pag
   return document?.svg ?? null;
 }
 
+const REMOTE_IMAGE_HREF_PATTERN = /(<image\b[^>]*\shref=")(https?:\/\/[^"]+)(")/g;
+
+function inferImageMimeType(contentType: string | null, url: string) {
+  const normalized = contentType?.split(";")[0]?.trim().toLowerCase();
+  if (normalized && normalized.startsWith("image/")) return normalized;
+  const lowerUrl = url.toLowerCase();
+  if (lowerUrl.endsWith(".png")) return "image/png";
+  if (lowerUrl.endsWith(".jpg") || lowerUrl.endsWith(".jpeg")) return "image/jpeg";
+  if (lowerUrl.endsWith(".webp")) return "image/webp";
+  if (lowerUrl.endsWith(".gif")) return "image/gif";
+  if (lowerUrl.endsWith(".svg")) return "image/svg+xml";
+  return "image/png";
+}
+
+async function fetchImageAsDataUrl(url: string) {
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0",
+      Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Image fetch failed with status ${response.status}`);
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  const mimeType = inferImageMimeType(response.headers.get("content-type"), url);
+  return `data:${mimeType};base64,${buffer.toString("base64")}`;
+}
+
+async function inlineExternalSvgImages(svg: string) {
+  const matches = [...svg.matchAll(REMOTE_IMAGE_HREF_PATTERN)];
+  if (matches.length === 0) return svg;
+
+  const uniqueUrls = [...new Set(matches.map((match) => match[2]))];
+  const replacements = new Map<string, string>();
+
+  await Promise.all(uniqueUrls.map(async (url) => {
+    try {
+      replacements.set(url, await fetchImageAsDataUrl(url));
+    } catch (error) {
+      console.warn(`[DOC-RENDER] Failed to inline remote image: ${url}`, error);
+    }
+  }));
+
+  return svg.replace(REMOTE_IMAGE_HREF_PATTERN, (full, prefix, url, suffix) => {
+    const replacement = replacements.get(url);
+    return replacement ? `${prefix}${replacement}${suffix}` : full;
+  });
+}
+
 async function svgToPngBuffer(svg: string) {
   const sharpModule = await import("sharp");
   const sharp = sharpModule.default;
-  return sharp(Buffer.from(svg), { density: 300 }).png().toBuffer();
+  const svgWithEmbeddedImages = await inlineExternalSvgImages(svg);
+  return sharp(Buffer.from(svgWithEmbeddedImages), { density: 300 }).png().toBuffer();
 }
 
 function isMissingPrintVersionTableError(error: unknown) {
@@ -986,7 +1038,7 @@ router.get("/documents/:type/:id/print-versions", requireDoctorAuth, async (req,
       pageLinks: documentType === "mfc"
         ? [1, 2].map((page) => ({
             page,
-            url: buildAbsoluteUrl(req, `/api/documents/${documentType}/${documentId}/page/${page}`),
+            url: buildAbsoluteUrl(req, `/api/documents/${documentType}/${documentId}/page/${page}.png`),
           }))
         : [],
     })));

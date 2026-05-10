@@ -22,7 +22,15 @@ export function DoctorStatCard({ label, value, subtext }: { label: string; value
   );
 }
 
-export function PrintVersionsPanel({ documentType, documentId }: { documentType: string; documentId: number }) {
+export function PrintVersionsPanel({
+  documentType,
+  documentId,
+  customDownloads,
+}: {
+  documentType: string;
+  documentId: number;
+  customDownloads?: Array<{ label: string; onClick: () => void | Promise<void> }>;
+}) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [externalImageUrl, setExternalImageUrl] = useState("");
@@ -71,7 +79,21 @@ export function PrintVersionsPanel({ documentType, documentId }: { documentType:
         <Button onClick={() => void generateVersion()} className="font-mono uppercase tracking-widest">
           Generate Print Version
         </Button>
-        {documentType === "mfc" ? (
+        {customDownloads && customDownloads.length > 0 ? (
+          <div className="grid gap-2">
+            {customDownloads.map((download) => (
+              <Button
+                key={download.label}
+                type="button"
+                variant="outline"
+                className="font-mono uppercase tracking-widest"
+                onClick={() => void download.onClick()}
+              >
+                {download.label}
+              </Button>
+            ))}
+          </div>
+        ) : documentType === "mfc" ? (
           <div className="grid gap-2">
             <Button asChild variant="outline" className="font-mono uppercase tracking-widest">
               <a href={buildPageDownloadUrl(1)}>Download Page 1</a>
