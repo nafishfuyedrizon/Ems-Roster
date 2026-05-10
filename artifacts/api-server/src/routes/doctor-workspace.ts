@@ -466,9 +466,11 @@ function buildMfcDiscordMessageContent(row: typeof mfcCasesTable.$inferSelect, s
 }
 
 async function postCompletedMfcToDiscord(row: typeof mfcCasesTable.$inferSelect, session: ReturnType<typeof doctorActor>) {
-  if (!DISCORD_BOT_TOKEN || !DISCORD_MFC_DUMP_CHANNEL_ID) {
-    console.warn("[DOCTOR-MFC] Discord post skipped: bot token or MFC dump channel is missing.");
-    return null;
+  if (!DISCORD_BOT_TOKEN) {
+    throw new Error("Discord bot token is missing on the API server.");
+  }
+  if (!DISCORD_MFC_DUMP_CHANNEL_ID) {
+    throw new Error("Discord MFC dump channel is not configured on the API server.");
   }
 
   const page1Png = await svgToPngBuffer(renderMfcSvg(row as unknown as Record<string, unknown>, 1));
