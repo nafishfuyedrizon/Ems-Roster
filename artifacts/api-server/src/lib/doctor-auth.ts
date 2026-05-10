@@ -70,18 +70,30 @@ export function readDoctorSessionCookie(req: Request): DoctorSession | null {
   }
 }
 
-export function writeDoctorSession(res: import("express").Response, session: Omit<DoctorSession, "issuedAt">) {
+function shouldUseCrossSiteCookie(req: Request) {
+  const forwardedProto = (req.headers["x-forwarded-proto"] as string | undefined)?.split(",")[0]?.trim();
+  return req.secure || forwardedProto === "https" || process.env.NODE_ENV === "production";
+}
+
+export function writeDoctorSession(req: Request, res: import("express").Response, session: Omit<DoctorSession, "issuedAt">) {
+  const crossSite = shouldUseCrossSiteCookie(req);
   res.cookie(SESSION_COOKIE, createDoctorSessionCookie(session), {
     httpOnly: true,
-    sameSite: "lax",
-    secure: false,
+    sameSite: crossSite ? "none" : "lax",
+    secure: crossSite,
     path: "/",
     maxAge: 1000 * 60 * 60 * 24 * 30,
   });
 }
 
-export function clearDoctorSession(res: import("express").Response) {
-  res.clearCookie(SESSION_COOKIE, { path: "/" });
+export function clearDoctorSession(req: Request, res: import("express").Response) {
+  const crossSite = shouldUseCrossSiteCookie(req);
+  res.clearCookie(SESSION_COOKIE, {
+    httpOnly: true,
+    sameSite: crossSite ? "none" : "lax",
+    secure: crossSite,
+    path: "/",
+  });
 }
 
 export async function resolveDoctorSession(req: Request): Promise<DoctorSession | null> {

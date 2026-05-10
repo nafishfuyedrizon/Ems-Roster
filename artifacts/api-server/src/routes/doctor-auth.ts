@@ -40,7 +40,7 @@ router.post("/doctor-auth/login", async (req, res) => {
 
   await db.update(doctorAccountsTable).set({ lastLoginAt: new Date(), updatedAt: new Date() }).where(eq(doctorAccountsTable.id, doctor.doctorAccountId));
 
-  writeDoctorSession(res, {
+  writeDoctorSession(req, res, {
     doctorAccountId: doctor.doctorAccountId,
     memberId: doctor.memberId,
     username: doctor.username,
@@ -62,8 +62,8 @@ router.post("/doctor-auth/login", async (req, res) => {
   });
 });
 
-router.post("/doctor-auth/logout", (_req, res) => {
-  clearDoctorSession(res);
+router.post("/doctor-auth/logout", (req, res) => {
+  clearDoctorSession(req, res);
   return res.status(204).send();
 });
 
