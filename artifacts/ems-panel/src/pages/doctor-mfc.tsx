@@ -68,6 +68,11 @@ export default function DoctorMfc() {
     sourceAttachmentUrl: form.sourceAttachmentUrl ?? "",
   };
 
+  const draftCases = useMemo(
+    () => (data ?? []).filter((item) => item.status !== "completed"),
+    [data],
+  );
+
   const autofillFromMdt = (result: MdtSearchResult) => {
     setForm((prev) => ({
       ...prev,
@@ -179,7 +184,7 @@ export default function DoctorMfc() {
           </CardContent>
         </Card>
         <div className="grid gap-4">
-          {(data ?? []).map((item) => (
+          {draftCases.map((item) => (
             <Card key={item.id} className="border-border/50 bg-card/50">
               <CardHeader>
                 <CardTitle>{item.applicantName}</CardTitle>
@@ -193,6 +198,13 @@ export default function DoctorMfc() {
               </CardContent>
             </Card>
           ))}
+          {!draftCases.length ? (
+            <Card className="border-border/50 bg-card/40">
+              <CardContent className="p-6 text-sm text-muted-foreground">
+                No draft MFC cases remain here. Confirmed MFC certificates now appear in Medical Records.
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
       </div>
     </DoctorPageShell>
