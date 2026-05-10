@@ -46,6 +46,28 @@ function toIso(value: Date | null | undefined) {
   return value ? value.toISOString() : null;
 }
 
+function patientMatchScore(
+  patient: typeof patientsTable.$inferSelect,
+  query: string,
+) {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return 0;
+
+  const name = patient.name.toLowerCase();
+  const cid = String(patient.cid ?? "").toLowerCase();
+  const phone = String(patient.phone ?? "").toLowerCase();
+
+  if (cid === normalizedQuery) return 400;
+  if (name === normalizedQuery) return 320;
+  if (cid.startsWith(normalizedQuery)) return 260;
+  if (name.startsWith(normalizedQuery)) return 220;
+  if (phone.startsWith(normalizedQuery)) return 180;
+  if (name.includes(normalizedQuery)) return 140;
+  if (cid.includes(normalizedQuery)) return 120;
+  if (phone.includes(normalizedQuery)) return 80;
+  return 0;
+}
+
 async function getPatientTimeline(patientId: number) {
   const [appointments, records, mfcs, prescriptions] = await Promise.all([
     db.select().from(doctorAppointmentsTable).where(eq(doctorAppointmentsTable.patientId, patientId)),
@@ -60,6 +82,23 @@ async function getPatientTimeline(patientId: number) {
     ...mfcs.map((row) => ({ type: "mfc", id: row.id, title: row.mfcReason || "Medical Fitness Certificate", occurredAt: row.examDateText || toIso(row.createdAt), status: row.status })),
     ...prescriptions.map((row) => ({ type: "prescription", id: row.id, title: row.advice || row.symptoms || "Prescription", occurredAt: row.prescriptionDateText || toIso(row.createdAt), status: row.status })),
   ].sort((a, b) => String(b.occurredAt ?? "").localeCompare(String(a.occurredAt ?? "")));
+}
+
+async function getPatientSearchCard(patient: typeof patientsTable.$inferSelect) {
+  const timeline = await getPatientTimeline(patient.id);
+  return {
+    ...patient,
+    createdAt: patient.createdAt.toISOString(),
+    updatedAt: patient.updatedAt.toISOString(),
+    stats: {
+      appointments: timeline.filter((item) => item.type === "appointment").length,
+      medicalRecords: timeline.filter((item) => item.type === "medical-record").length,
+      mfcCases: timeline.filter((item) => item.type === "mfc").length,
+      prescriptions: timeline.filter((item) => item.type === "prescription").length,
+    },
+    latestActivity: timeline[0] ?? null,
+    timelinePreview: timeline.slice(0, 4),
+  };
 }
 
 async function loadDocumentPayload(documentType: string, documentId: number) {
@@ -175,6 +214,23 @@ router.patch("/doctor-appointments/:id", requireDoctorAuth, async (req, res) => 
 router.get("/patients", requireDoctorAuth, async (_req, res) => {
   const rows = await db.select().from(patientsTable).orderBy(desc(patientsTable.updatedAt));
   return res.json(rows.map((row) => ({ ...row, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() })));
+});
+
+router.get("/patients/search", requireDoctorAuth, async (req, res) => {
+  const query = String(req.query.q ?? "").trim();
+  if (!query) {
+    return res.json({ query: "", results: [] });
+  }
+
+  const rows = await db.select().from(patientsTable).orderBy(desc(patientsTable.updatedAt));
+  const ranked = rows
+    .map((patient) => ({ patient, score: patientMatchScore(patient, query) }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score || b.patient.updatedAt.getTime() - a.patient.updatedAt.getTime())
+    .slice(0, 8);
+
+  const results = await Promise.all(ranked.map((entry) => getPatientSearchCard(entry.patient)));
+  return res.json({ query, results });
 });
 
 router.get("/patients/:id", requireDoctorAuth, async (req, res) => {
