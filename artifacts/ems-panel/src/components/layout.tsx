@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
-import { ShieldAlert, LayoutDashboard, Settings, Flame, ClipboardList, BookOpen } from "lucide-react";
+import { LayoutDashboard, Settings, Flame, ClipboardList, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
+import emsLogo from "@/assets/ems-logo.webp";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -19,8 +20,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="mx-auto w-full max-w-screen-2xl px-4 sm:px-6">
           <div className="flex min-h-16 items-center gap-3 py-3">
             <div className="flex min-w-0 flex-1 items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-primary/10 border border-primary/20">
-                <ShieldAlert className="h-6 w-6 text-primary" />
+              <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-primary/25 bg-gradient-to-br from-primary/10 to-cyan-400/5 shadow-[0_0_0_1px_rgba(0,229,255,0.06),0_10px_24px_rgba(0,0,0,0.28)]">
+                <img
+                  src={emsLogo}
+                  alt="EMS logo"
+                  className="h-full w-full object-cover object-center"
+                />
               </div>
               <div className="min-w-0">
                 <h1 className="truncate text-base font-bold leading-tight tracking-tight uppercase sm:text-lg">Legacy BD EMS</h1>
