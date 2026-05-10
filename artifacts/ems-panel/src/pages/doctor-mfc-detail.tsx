@@ -171,6 +171,32 @@ function EditableField({
   );
 }
 
+function AutoTextarea({
+  value,
+  className = "",
+  style,
+  ...props
+}: React.ComponentProps<typeof Textarea>) {
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, [value]);
+
+  return (
+    <Textarea
+      ref={textareaRef}
+      value={value}
+      className={`${className} overflow-hidden`}
+      style={style}
+      {...props}
+    />
+  );
+}
+
 function PhotoBox({
   url,
   className = "",
@@ -340,7 +366,7 @@ function EditableEyeReportRow({
         </div>
         <div className="flex max-w-[220px] flex-col items-start gap-1">
           <EyeChartImage />
-          <Textarea
+          <AutoTextarea
             value={value}
             onChange={(event) => onValueChange(event.target.value)}
             rows={2}
@@ -485,7 +511,7 @@ function EditableReportRow({
         <div className="mb-1 text-[15px] font-bold text-slate-900" style={{ fontFamily: SECTION_FONT }}>
           {title}
         </div>
-        <Textarea
+        <AutoTextarea
           value={value}
           onChange={(event) => onValueChange(event.target.value)}
           rows={title === "MRI Test:" ? 7 : 4}
@@ -799,7 +825,7 @@ export default function DoctorMfcDetail() {
 
               <div className="mt-8 grid grid-cols-[170px_minmax(0,1fr)] items-start gap-2 text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
                 <div className="pt-1 text-[16px] font-extrabold">Description:</div>
-                <Textarea
+                <AutoTextarea
                   value={valueOf(draft, "finalSummary")}
                   onChange={(event) => setField("finalSummary", event.target.value)}
                   rows={5}
