@@ -35,16 +35,22 @@ function wrapText(input: string, maxChars: number): string[] {
   return lines.length > 0 ? lines : [""];
 }
 
-function textLines(x: number, y: number, lines: string[], options?: { size?: number; weight?: number | string; color?: string; lineHeight?: number; anchor?: string }): string {
+function textLines(
+  x: number,
+  y: number,
+  lines: string[],
+  options?: { size?: number; weight?: number | string; color?: string; lineHeight?: number; anchor?: string; family?: string },
+): string {
   const size = options?.size ?? 20;
   const color = options?.color ?? "#222";
   const lineHeight = options?.lineHeight ?? Math.round(size * 1.55);
   const anchor = options?.anchor ? ` text-anchor="${options.anchor}"` : "";
   const weight = options?.weight ? ` font-weight="${options.weight}"` : "";
+  const family = options?.family ?? "'Times New Roman', serif";
   const tspans = lines
     .map((line, index) => `<tspan x="${x}" dy="${index === 0 ? 0 : lineHeight}">${esc(line)}</tspan>`)
     .join("");
-  return `<text x="${x}" y="${y}" font-size="${size}" fill="${color}" font-family="'Segoe UI', sans-serif"${weight}${anchor}>${tspans}</text>`;
+  return `<text x="${x}" y="${y}" font-size="${size}" fill="${color}" font-family="${family}"${weight}${anchor}>${tspans}</text>`;
 }
 
 function applicantFields(input: Record<string, unknown>): Array<[string, string]> {
@@ -169,7 +175,7 @@ export function renderMfcSvg(input: Record<string, unknown>, pageNumber?: 1 | 2)
   const photoW = 142;
   const photoH = 158;
   const tableX = marginX;
-  const tableY = page1Y + 476;
+  const tableY = page1Y + 500;
   const tableW = 640;
   const resultColW = 118;
   const contentColW = tableW - resultColW;
@@ -238,8 +244,8 @@ export function renderMfcSvg(input: Record<string, unknown>, pageNumber?: 1 | 2)
 
   ${renderPhotoFrame(photoX, photoY, photoW, photoH, photoUrl)}
 
-  <line x1="${marginX}" y1="${page1Y + 454}" x2="${pageX + pageWidth - 44}" y2="${page1Y + 454}" stroke="#444" stroke-width="1"/>
-  <text x="${marginX}" y="${page1Y + 484}" font-size="18" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Test Reports:</text>
+  <line x1="${marginX}" y1="${page1Y + 456}" x2="${pageX + pageWidth - 44}" y2="${page1Y + 456}" stroke="#444" stroke-width="1"/>
+  <text x="${marginX}" y="${page1Y + 488}" font-size="18" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Test Reports:</text>
 
   <rect x="${tableX}" y="${tableY}" width="${tableW}" height="${totalTableHeight}" fill="none" stroke="#111827" stroke-width="1.4"/>
   <line x1="${resultX}" y1="${tableY}" x2="${resultX}" y2="${tableY + totalTableHeight}" stroke="#111827" stroke-width="1.2"/>
