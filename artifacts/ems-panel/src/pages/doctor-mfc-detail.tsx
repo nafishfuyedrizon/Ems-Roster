@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { DoctorPageShell, useDoctorGuard } from "@/pages/doctor-shared";
 import { doctorFetch } from "@/lib/doctor-api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -192,42 +192,6 @@ function StaticReportRow({
       <div className="flex items-center justify-center p-2">
         <StaticResultBadge value={result} />
       </div>
-    </div>
-  );
-}
-
-function SectionButton({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <Button
-      type="button"
-      variant={active ? "default" : "outline"}
-      className="font-mono uppercase tracking-[0.18em]"
-      onClick={onClick}
-    >
-      {label}
-    </Button>
-  );
-}
-
-function EditorBlock({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">{label}</div>
-      {children}
     </div>
   );
 }
