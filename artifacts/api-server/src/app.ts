@@ -48,4 +48,13 @@ app.get("/", (_req, res) => {
 
 app.use("/api", router);
 
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (err instanceof SyntaxError && "body" in err) {
+    return res.status(400).json({ error: "Invalid JSON request body." });
+  }
+
+  logger.error({ err }, "Unhandled API error");
+  return res.status(500).json({ error: "Internal server error." });
+});
+
 export default app;

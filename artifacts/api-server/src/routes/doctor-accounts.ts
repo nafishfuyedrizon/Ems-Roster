@@ -49,14 +49,43 @@ router.post("/doctor-accounts", requireAdminRole(["full", "high-command"]), asyn
   const passwordHash = await hashPassword(password);
   const createdBy = (req.headers["x-admin-identity"] as string) || "Unknown";
 
-  const [inserted] = await db.insert(doctorAccountsTable).values({
-    memberId,
-    username,
-    passwordHash,
-    createdBy,
-  }).$returningId();
+  try {
+    const [inserted] = await db.insert(doctorAccountsTable).values({
+      memberId,
+      username,
+      passwordHash,
+      createdBy,
+    }).$returningId();
 
-  return res.status(201).json({ id: inserted.id, memberId, username, createdPassword: password });
+    return res.status(201).json({ id: inserted.id, memberId, username, createdPassword: password });
+  } catch (error) {
+    if ((error as { code?: string } | null)?.code === "ER_DUP_ENTRY") {
+      const [existingByMember] = await db
+        .select({ id: doctorAccountsTable.id })
+        .from(doctorAccountsTable)
+        .where(eq(doctorAccountsTable.memberId, memberId))
+        .limit(1);
+
+      if (existingByMember) {
+        return res.status(409).json({ error: "This member already has a doctor account." });
+      }
+
+      const [existingByUsername] = await db
+        .select({ id: doctorAccountsTable.id })
+        .from(doctorAccountsTable)
+        .where(eq(doctorAccountsTable.username, username))
+        .limit(1);
+
+      if (existingByUsername) {
+        return res.status(409).json({ error: "This username is already in use." });
+      }
+
+      return res.status(409).json({ error: "A doctor account with this information already exists." });
+    }
+
+    console.error("[DOCTOR-ACCOUNTS] Failed to create account:", error);
+    return res.status(500).json({ error: "Failed to create doctor account." });
+  }
 });
 
 router.patch("/doctor-accounts/:id", requireAdminRole(["full", "high-command"]), async (req, res) => {
