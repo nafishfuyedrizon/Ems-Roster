@@ -443,7 +443,13 @@ async function svgToPngBuffer(svg: string) {
   const sharpModule = await import("sharp");
   const sharp = sharpModule.default;
   const svgWithEmbeddedImages = await inlineExternalSvgImages(svg);
-  return sharp(Buffer.from(svgWithEmbeddedImages), { density: 300 }).png().toBuffer();
+  return sharp(Buffer.from(svgWithEmbeddedImages), { density: 360 })
+    .png({
+      compressionLevel: 9,
+      adaptiveFiltering: true,
+      effort: 10,
+    })
+    .toBuffer();
 }
 
 function isMissingPrintVersionTableError(error: unknown) {

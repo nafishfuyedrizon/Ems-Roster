@@ -11,8 +11,14 @@ import { Button } from "@/components/ui/button";
 import { PrintVersionsPanel } from "@/pages/doctor-components";
 import type { DoctorSession } from "@/hooks/use-doctor-auth";
 import { useToast } from "@/hooks/use-toast";
+import { MFC_EYE_CHART_DATA_URI, MFC_LOGO_DATA_URI } from "@/lib/mfc-assets";
 
-const CERTIFICATE_FONT = '"Times New Roman", serif';
+const DISPLAY_FONT = '"Playfair Display", Georgia, serif';
+const DISPLAY_BLACK_FONT = '"Playfair Display Black", "Playfair Display", Georgia, serif';
+const SECTION_FONT = '"Bree Serif", Georgia, serif';
+const TABLE_HEADER_FONT = '"Oswald", "Arial Narrow", sans-serif';
+const SIGNATURE_FONT = '"Caveat SemiBold", "Segoe Script", "Brush Script MT", cursive';
+const CERTIFICATE_FONT = SECTION_FONT;
 
 const DEFAULT_BLOOD_TEST = [
   "Red blood Cells (RBC)- 4.35 to 5.65(Man),3.92 to 5.13(Women)",
@@ -79,14 +85,50 @@ function resolveOfficerSignature(rawValue: unknown, doctor: DoctorSession | null
   return value;
 }
 
+function dataUrlFromBlob(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(new Error("Could not read image data."));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function resolveInlineImageUrl(url: string): Promise<string> {
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("data:")) return trimmed;
+
+  const response = await fetch(trimmed, { mode: "cors" });
+  if (!response.ok) {
+    throw new Error(`Image request failed with ${response.status}`);
+  }
+
+  const blob = await response.blob();
+  return dataUrlFromBlob(blob);
+}
+
+async function waitForImages(container: HTMLElement) {
+  const images = Array.from(container.querySelectorAll("img"));
+  await Promise.all(
+    images.map(
+      (image) =>
+        new Promise<void>((resolve) => {
+          const done = () => resolve();
+          if (image.complete && image.naturalWidth > 0) {
+            resolve();
+            return;
+          }
+          image.addEventListener("load", done, { once: true });
+          image.addEventListener("error", done, { once: true });
+        }),
+    ),
+  );
+}
+
 function CertificateMark({ className = "" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 100 100" aria-hidden="true" className={className}>
-      <g fill="none" stroke="#0d6db8" strokeWidth="3">
-        <path d="M50 10 58 33 82 18 68 40 92 50 68 60 82 82 58 67 50 90 42 67 18 82 32 60 8 50 32 40 18 18 42 33Z" fill="#9fe3ff" />
-        <circle cx="50" cy="50" r="12" fill="#fff" />
-      </g>
-    </svg>
+    <img src={MFC_LOGO_DATA_URI} alt="" aria-hidden="true" className={className} />
   );
 }
 
@@ -94,17 +136,17 @@ function CertificateHeader() {
   return (
     <div className="px-12 pt-12">
       <div className="border-t border-slate-500 pt-3">
-        <div className="grid grid-cols-[60px_minmax(0,1fr)_60px] items-center gap-6 border-b border-slate-500 pb-3">
-          <CertificateMark className="h-12 w-12 justify-self-center" />
+        <div className="grid grid-cols-[56px_minmax(0,1fr)_56px] items-center gap-5 border-b border-slate-500 pb-3">
+          <CertificateMark className="h-10 w-10 justify-self-center" />
           <div className="text-center">
-            <div className="text-[28px] font-bold uppercase tracking-[0.18em] text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+            <div className="text-[31px] font-bold uppercase tracking-normal text-slate-900" style={{ fontFamily: DISPLAY_FONT }}>
               Mount Zonah
             </div>
-            <div className="mt-1 text-[18px] font-bold uppercase tracking-[0.14em] text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+            <div className="mt-1 text-[18px] font-semibold uppercase tracking-normal text-slate-900" style={{ fontFamily: DISPLAY_BLACK_FONT }}>
               Medical Fitness Certificate
             </div>
           </div>
-          <CertificateMark className="h-12 w-12 justify-self-center" />
+          <CertificateMark className="h-10 w-10 justify-self-center" />
         </div>
       </div>
     </div>
@@ -146,22 +188,48 @@ function EditableField({
   );
 }
 
-function PhotoBox({ url }: { url: string }) {
+function PhotoBox({
+  url,
+  className = "",
+  imageClassName = "",
+}: {
+  url: string;
+  className?: string;
+  imageClassName?: string;
+}) {
+  const frameClassName = className || "h-[240px] w-[180px]";
+  const resolvedImageClassName = imageClassName || "h-full w-full object-contain object-bottom px-2 pt-2";
   if (url.trim()) {
     return (
-      <div className="h-[240px] w-[180px] overflow-hidden border border-slate-400 bg-white shadow-sm">
-        <img src={url} alt="Applicant" className="h-full w-full object-cover" />
+      <div className={`relative ${frameClassName} overflow-hidden border border-slate-500 bg-[#d8d4cd] shadow-sm`}>
+        <div className="absolute inset-[4px] bg-[#d9d6cf]" />
+        <div className="absolute inset-y-[4px] left-[4px] w-[26px] bg-[#cec9c1]" />
+        <div className="absolute inset-y-[4px] left-[28px] w-px bg-[#b6b0a7]" />
+        <div className="absolute left-[10px] top-[44%] h-[10px] w-[14px] border border-[#bb7a72] bg-[#efd3cf]" />
+        <div className="absolute bottom-[22px] right-[4px] h-[10px] w-[46px] bg-[#445f98]" />
+        <img src={url} alt="Applicant" crossOrigin="anonymous" className={`absolute inset-0 z-10 ${resolvedImageClassName}`} />
       </div>
     );
   }
 
   return (
-    <div className="flex h-[240px] w-[180px] items-center justify-center border border-slate-400 bg-white shadow-sm">
+    <div className={`flex ${frameClassName} items-center justify-center border border-slate-400 bg-white shadow-sm`}>
       <svg viewBox="0 0 64 64" className="h-24 w-24 text-slate-900" aria-hidden="true">
         <circle cx="32" cy="32" r="24" fill="none" stroke="currentColor" strokeWidth="3" />
         <path d="M20 42V24h24v18H20Zm2-2h20V26H22v14Zm3-3 5-7 4 5 3-3 5 8H25Zm15-9a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z" fill="currentColor" />
       </svg>
     </div>
+  );
+}
+
+function EyeChartImage({ className = "" }: { className?: string }) {
+  return (
+    <img
+      src={MFC_EYE_CHART_DATA_URI}
+      alt="Eye test chart"
+      className={className || "h-[102px] w-[74px] border border-slate-300 bg-white p-1 object-contain"}
+      style={{ imageRendering: "crisp-edges" }}
+    />
   );
 }
 
@@ -183,7 +251,7 @@ function TextWrap({
 
 function StaticResultBadge({ value }: { value: string }) {
   return (
-    <div className="min-w-[70px] border border-emerald-700 bg-[#e8f5df] px-2 py-2 text-center text-[13px] font-bold uppercase text-emerald-800" style={{ fontFamily: CERTIFICATE_FONT }}>
+    <div className="min-w-[58px] border border-emerald-700 bg-[#e8f5df] px-2 py-2 text-center text-[11px] font-semibold uppercase text-emerald-800" style={{ fontFamily: SECTION_FONT }}>
       {value || "ALL GOOD"}
     </div>
   );
@@ -191,11 +259,11 @@ function StaticResultBadge({ value }: { value: string }) {
 
 function StaticFieldRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid grid-cols-[88px_minmax(0,1fr)] items-end gap-3 text-[15px] text-slate-900">
-      <div className="font-bold" style={{ fontFamily: CERTIFICATE_FONT }}>
+    <div className="grid grid-cols-[82px_minmax(0,1fr)] items-end gap-2 text-[14px] text-slate-900">
+      <div className="font-semibold" style={{ fontFamily: SECTION_FONT }}>
         {label}:
       </div>
-      <div className="border-b border-slate-300 pb-1 text-[15px]" style={{ fontFamily: CERTIFICATE_FONT }}>
+      <div className="pb-0.5 text-[14px]" style={{ fontFamily: SECTION_FONT }}>
         {value}
       </div>
     </div>
@@ -214,15 +282,42 @@ function StaticReportRow({
   extra?: React.ReactNode;
 }) {
   return (
-    <div className="grid border-b border-slate-500 last:border-b-0 md:grid-cols-[minmax(0,1fr)_116px]">
-      <div className="border-b border-slate-500 p-3 md:border-b-0 md:border-r">
-        <div className="mb-2 text-[15px] font-bold text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+    <div className="grid border-b border-slate-500 last:border-b-0 md:grid-cols-[minmax(0,1fr)_92px]">
+      <div className="border-b border-slate-500 p-2 md:border-b-0 md:border-r">
+        <div className="mb-1 text-[15px] font-bold text-slate-900" style={{ fontFamily: SECTION_FONT }}>
           {title}
         </div>
-        <TextWrap text={value} className="text-[15px] leading-7" />
+        <TextWrap text={value} className="text-[12px] leading-[1.15rem]" style={{ fontFamily: SECTION_FONT, fontWeight: 400 }} />
         {extra}
       </div>
-      <div className="flex items-center justify-center p-3">
+      <div className="flex items-center justify-center p-2">
+        <StaticResultBadge value={result} />
+      </div>
+    </div>
+  );
+}
+
+function StaticEyeReportRow({
+  title,
+  value,
+  result,
+}: {
+  title: string;
+  value: string;
+  result: string;
+}) {
+  return (
+    <div className="grid border-b border-slate-500 last:border-b-0 md:grid-cols-[minmax(0,1fr)_92px]">
+      <div className="border-b border-slate-500 p-2 md:border-b-0 md:border-r">
+        <div className="mb-1 text-[15px] font-bold text-slate-900" style={{ fontFamily: SECTION_FONT }}>
+          {title}
+        </div>
+        <div className="flex max-w-[220px] flex-col items-start gap-1">
+          <EyeChartImage />
+          <TextWrap text={value} className="text-[12px] leading-[1.1rem]" style={{ fontFamily: SECTION_FONT, fontWeight: 600 }} />
+        </div>
+      </div>
+      <div className="flex items-center justify-center p-2">
         <StaticResultBadge value={result} />
       </div>
     </div>
@@ -233,10 +328,60 @@ function StaticSignatureLine({ label, value }: { label: string; value: string })
   return (
     <div className="mt-6 text-[15px] text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
       <span className="font-bold text-[#2563eb] underline">{label}</span>{" "}
-      <span style={{ fontFamily: "'Segoe Script', 'Brush Script MT', 'Segoe Print', cursive", fontSize: "28px", fontWeight: 500 }}>
+      <span style={{ fontFamily: SIGNATURE_FONT, fontSize: "28px", fontWeight: 500 }}>
         {value}
       </span>
       <div className="ml-[206px] mt-[-6px] w-[215px] border-b border-slate-300" />
+    </div>
+  );
+}
+
+function EditableEyeReportRow({
+  title,
+  value,
+  onValueChange,
+  result,
+  onResultChange,
+}: {
+  title: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  result: string;
+  onResultChange: (value: string) => void;
+}) {
+  return (
+    <div className="grid border-b border-slate-500 last:border-b-0 md:grid-cols-[minmax(0,1fr)_92px]">
+      <div className="border-b border-slate-500 p-2 md:border-b-0 md:border-r">
+        <div className="mb-1 text-[15px] font-bold text-slate-900" style={{ fontFamily: SECTION_FONT }}>
+          {title}
+        </div>
+        <div className="flex max-w-[220px] flex-col items-start gap-1">
+          <EyeChartImage />
+          <Textarea
+            value={value}
+            onChange={(event) => onValueChange(event.target.value)}
+            rows={2}
+            spellCheck={false}
+            autoCorrect="off"
+            autoCapitalize="none"
+            autoComplete="off"
+            className="min-h-0 w-full resize-none border-0 bg-transparent px-0 py-0 text-[12px] leading-[1.1rem] text-slate-900 shadow-none focus-visible:ring-0"
+            style={{ fontFamily: SECTION_FONT, fontWeight: 600 }}
+          />
+        </div>
+      </div>
+      <div className="flex items-center justify-center p-2">
+        <Input
+          value={result}
+          onChange={(event) => onResultChange(event.target.value)}
+          spellCheck={false}
+          autoCorrect="off"
+          autoCapitalize="none"
+          autoComplete="off"
+          className="h-auto min-h-[40px] w-full rounded-none border border-emerald-700 bg-[#e8f5df] px-2 py-2 text-center text-[11px] font-semibold uppercase text-emerald-800 shadow-none focus-visible:ring-0"
+          style={{ fontFamily: SECTION_FONT }}
+        />
+      </div>
     </div>
   );
 }
@@ -245,12 +390,12 @@ function StaticMfcPageOne({ draft }: { draft: MfcDraft }) {
   return (
     <Paper>
       <CertificateHeader />
-      <div className="px-12 pb-8 pt-4" style={{ fontFamily: CERTIFICATE_FONT }}>
-        <div className="text-center text-[18px] font-bold text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+      <div className="px-12 pb-7 pt-4" style={{ fontFamily: CERTIFICATE_FONT }}>
+        <div className="text-center text-[24px] font-bold text-slate-900" style={{ fontFamily: SECTION_FONT }}>
           Applicant Information
         </div>
-        <div className="mt-6 grid items-start gap-8 md:grid-cols-[minmax(0,1fr)_200px]">
-          <div className="space-y-3">
+        <div className="mt-5 grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_168px]">
+          <div className="space-y-2">
             <StaticFieldRow label="Name" value={valueOf(draft, "applicantName")} />
             <StaticFieldRow label="Sex" value={valueOf(draft, "sex")} />
             <StaticFieldRow label="D.O.B" value={valueOf(draft, "dateOfBirth")} />
@@ -261,26 +406,25 @@ function StaticMfcPageOne({ draft }: { draft: MfcDraft }) {
             <StaticFieldRow label="Date" value={valueOf(draft, "examDateText")} />
           </div>
           <div className="flex justify-center md:justify-end">
-            <PhotoBox url={valueOf(draft, "sourceAttachmentUrl")} />
+            <PhotoBox url={valueOf(draft, "sourceAttachmentUrl")} className="h-[162px] w-[130px]" imageClassName="h-full w-full object-contain object-bottom px-2 pt-2" />
           </div>
         </div>
 
-        <div className="mt-8">
-          <div className="mb-2 text-[18px] font-bold text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+        <div className="mt-6">
+          <div className="mb-2 text-[24px] font-bold text-slate-900" style={{ fontFamily: SECTION_FONT }}>
             Test Reports:
           </div>
           <div className="border border-slate-500">
-            <div className="grid bg-slate-100 text-[15px] font-bold text-[#3b82f6] md:grid-cols-[minmax(0,1fr)_116px]" style={{ fontFamily: CERTIFICATE_FONT }}>
+            <div className="grid bg-slate-100 text-[15px] font-bold text-[#4f74d6] md:grid-cols-[minmax(0,1fr)_92px]" style={{ fontFamily: TABLE_HEADER_FONT }}>
               <div className="border-b border-slate-500 p-2 md:border-b-0 md:border-r">Report Title</div>
               <div className="p-2 text-center">Result</div>
             </div>
             <StaticReportRow title="Blood Test:" value={valueOf(draft, "bloodTest")} result={valueOf(draft, "bloodResult")} />
             <StaticReportRow title="MRI Test:" value={valueOf(draft, "mriTest")} result={valueOf(draft, "mriResult")} />
-            <StaticReportRow
+            <StaticEyeReportRow
               title="Eye Test:"
               value={valueOf(draft, "eyeTest")}
               result={valueOf(draft, "eyeResult")}
-              extra={<div className="mt-3 text-[14px] leading-6 text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>E<br />F P<br />T O Z<br />L P E D<br />P E C F D<br />E D F C Z P<br />F L O P Z D</div>}
             />
           </div>
         </div>
@@ -295,12 +439,12 @@ function StaticMfcPageTwo({ draft }: { draft: MfcDraft }) {
   return (
     <Paper>
       <CertificateHeader />
-      <div className="px-12 pb-8 pt-4" style={{ fontFamily: CERTIFICATE_FONT }}>
-        <div className="text-center text-[18px] font-bold text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+      <div className="px-12 pb-7 pt-4" style={{ fontFamily: CERTIFICATE_FONT }}>
+        <div className="text-center text-[24px] font-bold text-slate-900" style={{ fontFamily: SECTION_FONT }}>
           Applicant Information
         </div>
-        <div className="mt-6 grid items-start gap-8 md:grid-cols-[minmax(0,1fr)_200px]">
-          <div className="space-y-3">
+        <div className="mt-5 grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_168px]">
+          <div className="space-y-2">
             <StaticFieldRow label="Name" value={valueOf(draft, "applicantName")} />
             <StaticFieldRow label="Sex" value={valueOf(draft, "sex")} />
             <StaticFieldRow label="D.O.B" value={valueOf(draft, "dateOfBirth")} />
@@ -311,23 +455,23 @@ function StaticMfcPageTwo({ draft }: { draft: MfcDraft }) {
             <StaticFieldRow label="Date" value={valueOf(draft, "examDateText")} />
           </div>
           <div className="flex justify-center md:justify-end">
-            <PhotoBox url={valueOf(draft, "sourceAttachmentUrl")} />
+            <PhotoBox url={valueOf(draft, "sourceAttachmentUrl")} className="h-[162px] w-[130px]" imageClassName="h-full w-full object-contain object-bottom px-2 pt-2" />
           </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-[170px_minmax(0,1fr)] items-start gap-2 text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
-          <div className="pt-1 text-[16px] font-extrabold">Description:</div>
+        <div className="mt-6 grid grid-cols-[170px_minmax(0,1fr)] items-start gap-2 text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+          <div className="pt-1 text-[16px] font-bold" style={{ fontFamily: SECTION_FONT }}>Description:</div>
           <TextWrap text={valueOf(draft, "finalSummary")} className="text-[16px] font-bold leading-8" />
         </div>
 
         <div className="mt-6 space-y-3 text-[15px] text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
           <div className="grid grid-cols-[230px_minmax(0,1fr)] items-center gap-2">
-            <div className="font-extrabold text-[#2563eb] underline">Name of Medical Officer:</div>
+            <div className="font-bold text-[#2563eb] underline" style={{ fontFamily: SECTION_FONT }}>Name of Medical Officer:</div>
             <div className="border-b border-slate-300 pb-1 text-[17px] font-extrabold">{valueOf(draft, "officerName")}</div>
           </div>
           <div className="grid grid-cols-[262px_minmax(0,1fr)] items-center gap-2">
-            <div className="font-extrabold text-[#2563eb] underline">Signature of Medical Officer:</div>
-            <div className="border-b border-slate-300 pb-1 text-[30px] leading-none text-slate-900" style={{ fontFamily: "'Segoe Script', 'Brush Script MT', 'Segoe Print', cursive", fontWeight: 500 }}>
+            <div className="font-bold text-[#2563eb] underline" style={{ fontFamily: SECTION_FONT }}>Signature of Medical Officer:</div>
+            <div className="border-b border-slate-300 pb-1 text-[30px] leading-none text-slate-900" style={{ fontFamily: SIGNATURE_FONT, fontWeight: 500 }}>
               {valueOf(draft, "officerSignature")}
             </div>
           </div>
@@ -355,19 +499,19 @@ function EditableReportRow({
   return (
     <div className="grid border-b border-slate-500 last:border-b-0 md:grid-cols-[minmax(0,1fr)_116px]">
       <div className="border-b border-slate-500 p-2 md:border-b-0 md:border-r">
-        <div className="mb-1 text-[15px] font-bold text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>
+        <div className="mb-1 text-[15px] font-bold text-slate-900" style={{ fontFamily: SECTION_FONT }}>
           {title}
         </div>
         <Textarea
           value={value}
           onChange={(event) => onValueChange(event.target.value)}
-          rows={title === "MRI Test:" ? 9 : 5}
+          rows={title === "MRI Test:" ? 7 : 4}
           spellCheck={false}
           autoCorrect="off"
           autoCapitalize="none"
           autoComplete="off"
-          className="min-h-0 resize-none border-0 bg-transparent px-0 py-0 text-[15px] leading-7 text-slate-900 shadow-none focus-visible:ring-0"
-          style={{ fontFamily: CERTIFICATE_FONT }}
+          className="min-h-0 resize-none border-0 bg-transparent px-0 py-0 text-[12px] leading-[1.15rem] text-slate-900 shadow-none focus-visible:ring-0"
+          style={{ fontFamily: SECTION_FONT, fontWeight: 400 }}
         />
         {extra}
       </div>
@@ -379,8 +523,8 @@ function EditableReportRow({
           autoCorrect="off"
           autoCapitalize="none"
           autoComplete="off"
-          className="h-auto min-h-[42px] w-full rounded-none border border-emerald-700 bg-[#e8f5df] px-2 py-2 text-center text-[13px] font-bold uppercase text-emerald-800 shadow-none focus-visible:ring-0"
-          style={{ fontFamily: CERTIFICATE_FONT }}
+          className="h-auto min-h-[40px] w-full rounded-none border border-emerald-700 bg-[#e8f5df] px-2 py-2 text-center text-[11px] font-semibold uppercase text-emerald-800 shadow-none focus-visible:ring-0"
+          style={{ fontFamily: SECTION_FONT }}
         />
       </div>
     </div>
@@ -401,6 +545,7 @@ export default function DoctorMfcDetail() {
     enabled: Number.isFinite(id),
   });
   const [draft, setDraft] = useState<MfcDraft>({});
+  const [resolvedPhotoUrl, setResolvedPhotoUrl] = useState("");
   useEffect(() => {
     if (!data) return;
     const officerName = resolveOfficerName(data.officerName, doctor);
@@ -426,6 +571,27 @@ export default function DoctorMfcDetail() {
       finalSummary: data.finalSummary || DEFAULT_DESCRIPTION,
     });
   }, [data, doctor]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const rawUrl = valueOf(draft, "sourceAttachmentUrl").trim();
+    if (!rawUrl) {
+      setResolvedPhotoUrl("");
+      return;
+    }
+
+    resolveInlineImageUrl(rawUrl)
+      .then((nextUrl) => {
+        if (!cancelled) setResolvedPhotoUrl(nextUrl || rawUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setResolvedPhotoUrl(rawUrl);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [draft.sourceAttachmentUrl]);
 
   const setField = (field: string, value: string) => {
     setDraft((prev) => ({ ...prev, [field]: value }));
@@ -461,9 +627,10 @@ export default function DoctorMfcDetail() {
     if (!target) return;
 
     try {
+      await waitForImages(target);
       const dataUrl = await toPng(target, {
         cacheBust: true,
-        pixelRatio: 3,
+        pixelRatio: 6,
         backgroundColor: "#fffdfa",
       });
       const anchor = document.createElement("a");
@@ -486,10 +653,10 @@ export default function DoctorMfcDetail() {
       <div className="mx-auto flex max-w-[1180px] flex-col gap-6">
         <div className="pointer-events-none fixed left-[-20000px] top-0">
           <div ref={capturePage1Ref} className="w-[760px] bg-[#fffdfa]">
-            <StaticMfcPageOne draft={draft} />
+            <StaticMfcPageOne draft={{ ...draft, sourceAttachmentUrl: resolvedPhotoUrl || valueOf(draft, "sourceAttachmentUrl") }} />
           </div>
           <div ref={capturePage2Ref} className="mt-8 w-[760px] bg-[#fffdfa]">
-            <StaticMfcPageTwo draft={draft} />
+            <StaticMfcPageTwo draft={{ ...draft, sourceAttachmentUrl: resolvedPhotoUrl || valueOf(draft, "sourceAttachmentUrl") }} />
           </div>
         </div>
         <Card className="border-border/50 bg-card/50">
@@ -534,7 +701,7 @@ export default function DoctorMfcDetail() {
                   <EditableField label="Date" value={valueOf(draft, "examDateText")} onChange={(value) => setField("examDateText", value)} />
                 </div>
                 <div className="flex justify-center md:justify-end">
-                  <PhotoBox url={valueOf(draft, "sourceAttachmentUrl")} />
+                  <PhotoBox url={resolvedPhotoUrl || valueOf(draft, "sourceAttachmentUrl")} imageClassName="h-full w-full object-contain object-bottom px-2 pt-2" />
                 </div>
               </div>
 
@@ -561,13 +728,12 @@ export default function DoctorMfcDetail() {
                     result={valueOf(draft, "mriResult")}
                     onResultChange={(value) => setField("mriResult", value)}
                   />
-                  <EditableReportRow
+                  <EditableEyeReportRow
                     title="Eye Test:"
                     value={valueOf(draft, "eyeTest")}
                     onValueChange={(value) => setField("eyeTest", value)}
                     result={valueOf(draft, "eyeResult")}
                     onResultChange={(value) => setField("eyeResult", value)}
-                    extra={<div className="mt-3 text-[14px] leading-6 text-slate-900" style={{ fontFamily: CERTIFICATE_FONT }}>E<br />F P<br />T O Z<br />L P E D<br />P E C F D<br />E D F C Z P<br />F L O P Z D</div>}
                   />
                 </div>
               </div>
@@ -602,7 +768,7 @@ export default function DoctorMfcDetail() {
                   <EditableField label="Date" value={valueOf(draft, "examDateText")} onChange={(value) => setField("examDateText", value)} />
                 </div>
                 <div className="flex justify-center md:justify-end">
-                  <PhotoBox url={valueOf(draft, "sourceAttachmentUrl")} />
+                  <PhotoBox url={resolvedPhotoUrl || valueOf(draft, "sourceAttachmentUrl")} imageClassName="h-full w-full object-contain object-bottom px-2 pt-2" />
                 </div>
               </div>
 

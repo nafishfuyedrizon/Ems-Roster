@@ -1,5 +1,11 @@
 import { MFC_EYE_CHART_DATA_URI, MFC_LOGO_DATA_URI } from "./mfc-assets.js";
 
+const DISPLAY_FONT = "'Playfair Display', Georgia, serif";
+const DISPLAY_BLACK_FONT = "'Playfair Display Black', 'Playfair Display', Georgia, serif";
+const SECTION_FONT = "'Bree Serif', Georgia, serif";
+const TABLE_HEADER_FONT = "'Oswald', 'Arial Narrow', sans-serif";
+const SIGNATURE_FONT = "'Caveat SemiBold', 'Segoe Script', 'Brush Script MT', cursive";
+
 function esc(value: string | null | undefined): string {
   return (value ?? "")
     .replaceAll("&", "&amp;")
@@ -96,8 +102,13 @@ function renderPhotoFrame(x: number, y: number, width: number, height: number, i
   const safeUrl = esc(imageUrl);
   if (safeUrl) {
     return `
-    <rect x="${x}" y="${y}" width="${width}" height="${height}" fill="#fff" stroke="#111827" stroke-width="1.2"/>
-    <image href="${safeUrl}" x="${x + 2}" y="${y + 2}" width="${width - 4}" height="${height - 4}" preserveAspectRatio="xMidYMid slice"/>
+    <rect x="${x}" y="${y}" width="${width}" height="${height}" fill="#ffffff" stroke="#111827" stroke-width="1.2"/>
+    <rect x="${x + 4}" y="${y + 4}" width="${width - 8}" height="${height - 8}" fill="#d9d6cf"/>
+    <rect x="${x + 4}" y="${y + 4}" width="26" height="${height - 8}" fill="#cec9c1"/>
+    <line x1="${x + 28}" y1="${y + 4}" x2="${x + 28}" y2="${y + height - 4}" stroke="#b6b0a7" stroke-width="1"/>
+    <rect x="${x + 10}" y="${y + Math.round(height * 0.45)}" width="14" height="10" fill="#efd3cf" stroke="#bb7a72" stroke-width="0.8"/>
+    <rect x="${x + width - 52}" y="${y + height - 22}" width="46" height="10" fill="#445f98"/>
+    <image href="${safeUrl}" x="${x + 6}" y="${y + 6}" width="${width - 12}" height="${height - 12}" preserveAspectRatio="xMidYMax meet"/>
     `;
   }
   return `
@@ -113,13 +124,13 @@ function renderPhotoFrame(x: number, y: number, width: number, height: number, i
 function renderSignatureLine(label: string, value: string, x: number, y: number): string {
   const signatureX = x + 340;
   return `
-  <text x="${x}" y="${y}" font-size="22" fill="#111827" font-family="'Segoe UI', sans-serif">${esc(label)}</text>
+  <text x="${x}" y="${y}" font-size="22" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>${esc(label)}</text>
   <line x1="${signatureX - 10}" y1="${y + 6}" x2="${signatureX + 360}" y2="${y + 6}" stroke="#94a3b8" stroke-width="1.2"/>
-  <text x="${signatureX}" y="${y - 6}" font-size="30" fill="#0f172a" font-family="'Segoe Script', 'Brush Script MT', 'Segoe Print', cursive">${esc(value)}</text>`;
+  <text x="${signatureX}" y="${y - 6}" font-size="30" fill="#0f172a" font-family=${JSON.stringify(SIGNATURE_FONT)}>${esc(value)}</text>`;
 }
 
 function renderEyeChartMini(x: number, y: number): string {
-  return `<image href="${MFC_EYE_CHART_DATA_URI}" x="${x}" y="${y}" width="126" height="186" preserveAspectRatio="xMidYMid meet"/>`;
+  return `<image href="${MFC_EYE_CHART_DATA_URI}" x="${x}" y="${y}" width="82" height="118" preserveAspectRatio="xMidYMid meet"/>`;
 }
 
 function renderResultBadge(x: number, y: number, width: number, height: number, value: string): string {
@@ -137,6 +148,8 @@ function renderResultBadge(x: number, y: number, width: number, height: number, 
 }
 
 export function renderMfcSvg(input: Record<string, unknown>, pageNumber?: 1 | 2): string {
+  const pageExportScale = 1;
+  const fullExportScale = 1;
   const fields = applicantFields(input);
   const fieldMap = Object.fromEntries(fields) as Record<string, string>;
   const bloodLines = wrapText(
@@ -144,16 +157,16 @@ export function renderMfcSvg(input: Record<string, unknown>, pageNumber?: 1 | 2)
       input.bloodTest ??
         "Red blood Cells (RBC)- 4.35 to 5.65(Man),3.92 to 5.13(Women)\nWhite Blood Cells (WBC)- 4500-11000/mm3\nPlatelets (PLT): 152 to 361",
     ),
-    48,
+    56,
   );
   const mriLines = wrapText(
     String(
       input.mriTest ??
         "1. Extensive tissue loss in the right temporal/occipital region with ex vacuo prominence of the right lateral ventricle and Wallerian degeneration of the right cerebral peduncle.\n2. Subtle focal defects of periventricular white matter probably due to superimposed small vessel ischemic disease.\n3. Previous studies are kept from being made available for review. At such time that a previous study becomes available, an addendum will be issued.",
     ),
-    47,
+    58,
   );
-  const eyeLines = wrapText(String(input.eyeTest ?? "Successfully Read All the Text In This Chart"), 58);
+  const eyeLines = wrapText(String(input.eyeTest ?? "Successfully Read All the Text In This Chart"), 38);
   const summaryLines = wrapText(
     String(
       input.finalSummary ??
@@ -161,23 +174,23 @@ export function renderMfcSvg(input: Record<string, unknown>, pageNumber?: 1 | 2)
     ),
     72,
   );
-  const bloodHeight = Math.max(118, bloodLines.length * 20 + 42);
-  const mriHeight = Math.max(228, mriLines.length * 18 + 56);
-  const eyeHeight = Math.max(222, eyeLines.length * 18 + 128);
+  const bloodHeight = Math.max(92, bloodLines.length * 14 + 34);
+  const mriHeight = Math.max(162, mriLines.length * 13 + 40);
+  const eyeHeight = Math.max(138, eyeLines.length * 13 + 84);
   const canvasWidth = 860;
   const pageWidth = 760;
   const pageX = 50;
   const page1Y = 26;
   const pageGap = 34;
   const marginX = pageX + 44;
-  const photoX = pageX + 548;
+  const photoX = pageX + 558;
   const photoY = page1Y + 144;
-  const photoW = 142;
-  const photoH = 158;
+  const photoW = 130;
+  const photoH = 162;
   const tableX = marginX;
   const tableY = page1Y + 500;
   const tableW = 640;
-  const resultColW = 118;
+  const resultColW = 92;
   const contentColW = tableW - resultColW;
   const resultX = tableX + contentColW;
   const totalTableHeight = 42 + bloodHeight + mriHeight + eyeHeight;
@@ -191,8 +204,8 @@ export function renderMfcSvg(input: Record<string, unknown>, pageNumber?: 1 | 2)
   const headerTop = page1Y + 36;
   const secondPageHeaderTop = page2Y + 36;
   const secondPhotoY = page2Y + 168;
-  const secondPhotoW = 138;
-  const secondPhotoH = 154;
+  const secondPhotoW = 130;
+  const secondPhotoH = 162;
   const page2FieldStartY = page2Y + 206;
   const page2FieldGap = 36;
   const page2LastFieldY = page2FieldStartY + page2FieldGap * 7;
@@ -204,8 +217,12 @@ export function renderMfcSvg(input: Record<string, unknown>, pageNumber?: 1 | 2)
   const page2BottomY = officerSignatureY + 24;
   const page2Height = page2BottomY - page2Y + 70;
   const combinedRootHeight = page2Y + page2Height + pageGap;
-  const rootWidth = pageNumber ? pageWidth : canvasWidth;
-  const rootHeight = pageNumber ? (pageNumber === 1 ? page1Height : page2Height) : combinedRootHeight;
+  const rootWidth = pageNumber
+    ? pageWidth * pageExportScale
+    : canvasWidth * fullExportScale;
+  const rootHeight = pageNumber
+    ? (pageNumber === 1 ? page1Height : page2Height) * pageExportScale
+    : combinedRootHeight * fullExportScale;
   const viewBox = pageNumber
     ? `${pageX} ${pageNumber === 1 ? page1Y : page2Y} ${pageWidth} ${pageNumber === 1 ? page1Height : page2Height}`
     : `0 0 ${canvasWidth} ${combinedRootHeight}`;
@@ -218,85 +235,85 @@ export function renderMfcSvg(input: Record<string, unknown>, pageNumber?: 1 | 2)
   <line x1="${pageX + 26}" y1="${headerTop}" x2="${pageX + pageWidth - 26}" y2="${headerTop}" stroke="#444" stroke-width="1"/>
   ${renderMountZonahMark(pageX + 42, headerTop + 6, 52)}
   ${renderMountZonahMark(pageX + pageWidth - 94, headerTop + 6, 52)}
-  <text x="${pageX + pageWidth / 2}" y="${headerTop + 30}" text-anchor="middle" font-size="31" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MOUNT ZONAH</text>
-  <text x="${pageX + pageWidth / 2}" y="${headerTop + 68}" text-anchor="middle" font-size="17" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MEDICAL FITNESS CERTIFICATE</text>
+  <text x="${pageX + pageWidth / 2}" y="${headerTop + 30}" text-anchor="middle" font-size="31" font-weight="800" fill="#111827" font-family=${JSON.stringify(DISPLAY_FONT)}>MOUNT ZONAH</text>
+  <text x="${pageX + pageWidth / 2}" y="${headerTop + 68}" text-anchor="middle" font-size="17" font-weight="700" fill="#111827" font-family=${JSON.stringify(DISPLAY_BLACK_FONT)}>MEDICAL FITNESS CERTIFICATE</text>
   <line x1="${pageX + 26}" y1="${headerTop + 84}" x2="${pageX + pageWidth - 26}" y2="${headerTop + 84}" stroke="#444" stroke-width="1"/>
 
-  <text x="${pageX + pageWidth / 2}" y="${page1Y + 146}" text-anchor="middle" font-size="18" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Applicant Information</text>
+  <text x="${pageX + pageWidth / 2}" y="${page1Y + 146}" text-anchor="middle" font-size="18" font-weight="800" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>Applicant Information</text>
 
-  <text x="${marginX}" y="${page1Y + 188}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Name:</text>
-  <text x="${marginX}" y="${page1Y + 222}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Sex:</text>
-  <text x="${marginX}" y="${page1Y + 256}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">D.O.B:</text>
-  <text x="${marginX}" y="${page1Y + 290}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">CID:</text>
-  <text x="${marginX}" y="${page1Y + 324}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Number:</text>
-  <text x="${marginX}" y="${page1Y + 358}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Weight:</text>
-  <text x="${marginX}" y="${page1Y + 392}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">MFC Reason:</text>
-  <text x="${marginX}" y="${page1Y + 426}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Date:</text>
+  <text x="${marginX}" y="${page1Y + 188}" font-size="14" font-weight="700" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>Name:</text>
+  <text x="${marginX}" y="${page1Y + 222}" font-size="14" font-weight="700" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>Sex:</text>
+  <text x="${marginX}" y="${page1Y + 256}" font-size="14" font-weight="700" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>D.O.B:</text>
+  <text x="${marginX}" y="${page1Y + 290}" font-size="14" font-weight="700" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>CID:</text>
+  <text x="${marginX}" y="${page1Y + 324}" font-size="14" font-weight="700" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>Number:</text>
+  <text x="${marginX}" y="${page1Y + 358}" font-size="14" font-weight="700" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>Weight:</text>
+  <text x="${marginX}" y="${page1Y + 392}" font-size="14" font-weight="700" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>MFC Reason:</text>
+  <text x="${marginX}" y="${page1Y + 426}" font-size="14" font-weight="700" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>Date:</text>
 
-  <text x="${marginX + 84}" y="${page1Y + 188}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Name"])}</text>
-  <text x="${marginX + 84}" y="${page1Y + 222}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Sex"])}</text>
-  <text x="${marginX + 84}" y="${page1Y + 256}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["D.O.B"])}</text>
-  <text x="${marginX + 84}" y="${page1Y + 290}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["CID"])}</text>
-  <text x="${marginX + 84}" y="${page1Y + 324}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Number"])}</text>
-  <text x="${marginX + 84}" y="${page1Y + 358}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Weight"])}</text>
-  <text x="${marginX + 84}" y="${page1Y + 392}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["MFC Reason"])}</text>
-  <text x="${marginX + 84}" y="${page1Y + 426}" font-size="14" fill="#111827" font-family="'Times New Roman', serif">${esc(fieldMap["Date"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 188}" font-size="14" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>${esc(fieldMap["Name"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 222}" font-size="14" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>${esc(fieldMap["Sex"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 256}" font-size="14" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>${esc(fieldMap["D.O.B"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 290}" font-size="14" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>${esc(fieldMap["CID"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 324}" font-size="14" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>${esc(fieldMap["Number"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 358}" font-size="14" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>${esc(fieldMap["Weight"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 392}" font-size="14" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>${esc(fieldMap["MFC Reason"])}</text>
+  <text x="${marginX + 84}" y="${page1Y + 426}" font-size="14" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>${esc(fieldMap["Date"])}</text>
 
   ${renderPhotoFrame(photoX, photoY, photoW, photoH, photoUrl)}
 
   <line x1="${marginX}" y1="${page1Y + 456}" x2="${pageX + pageWidth - 44}" y2="${page1Y + 456}" stroke="#444" stroke-width="1"/>
-  <text x="${marginX}" y="${page1Y + 488}" font-size="18" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Test Reports:</text>
+  <text x="${marginX}" y="${page1Y + 488}" font-size="18" font-weight="800" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>Test Reports:</text>
 
   <rect x="${tableX}" y="${tableY}" width="${tableW}" height="${totalTableHeight}" fill="none" stroke="#111827" stroke-width="1.4"/>
   <line x1="${resultX}" y1="${tableY}" x2="${resultX}" y2="${tableY + totalTableHeight}" stroke="#111827" stroke-width="1.2"/>
   <line x1="${tableX}" y1="${tableY + 34}" x2="${tableX + tableW}" y2="${tableY + 34}" stroke="#111827" stroke-width="1.2"/>
-  <text x="${tableX + 12}" y="${tableY + 23}" font-size="14" font-weight="700" fill="#4f74d6" font-family="'Times New Roman', serif">Report Title</text>
-  <text x="${resultX + resultColW / 2}" y="${tableY + 23}" text-anchor="middle" font-size="14" font-weight="700" fill="#4f74d6" font-family="'Times New Roman', serif">Result</text>
+  <text x="${tableX + 12}" y="${tableY + 23}" font-size="14" font-weight="700" fill="#4f74d6" font-family=${JSON.stringify(TABLE_HEADER_FONT)}>Report Title</text>
+  <text x="${resultX + resultColW / 2}" y="${tableY + 23}" text-anchor="middle" font-size="14" font-weight="700" fill="#4f74d6" font-family=${JSON.stringify(TABLE_HEADER_FONT)}>Result</text>
   <line x1="${tableX}" y1="${tableY + 34 + bloodHeight}" x2="${tableX + tableW}" y2="${tableY + 34 + bloodHeight}" stroke="#111827" stroke-width="1.1"/>
   <line x1="${tableX}" y1="${tableY + 34 + bloodHeight + mriHeight}" x2="${tableX + tableW}" y2="${tableY + 34 + bloodHeight + mriHeight}" stroke="#111827" stroke-width="1.1"/>
 
-  <text x="${tableX + 12}" y="${tableY + 58}" font-size="16" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Blood Test:</text>
-  ${textLines(tableX + 16, tableY + 82, bloodLines, { size: 12, color: "#111827", lineHeight: 18 })}
+  <text x="${tableX + 12}" y="${tableY + 56}" font-size="16" font-weight="800" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>Blood Test:</text>
+  ${textLines(tableX + 16, tableY + 74, bloodLines, { size: 11.5, color: "#111827", lineHeight: 14, family: SECTION_FONT })}
   ${renderResultBadge(resultX + 8, tableY + 34 + (bloodHeight / 2) - 18, resultColW - 16, 36, String(input.bloodResult ?? "ALL GOOD"))}
 
-  <text x="${tableX + 12}" y="${tableY + 34 + bloodHeight + 26}" font-size="16" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MRI Test:</text>
-  ${textLines(tableX + 16, tableY + 34 + bloodHeight + 50, mriLines, { size: 11.5, color: "#111827", lineHeight: 17 })}
+  <text x="${tableX + 12}" y="${tableY + 34 + bloodHeight + 22}" font-size="16" font-weight="800" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>MRI Test:</text>
+  ${textLines(tableX + 16, tableY + 34 + bloodHeight + 40, mriLines, { size: 11, color: "#111827", lineHeight: 14, family: SECTION_FONT })}
   ${renderResultBadge(resultX + 8, tableY + 34 + bloodHeight + (mriHeight / 2) + 8, resultColW - 16, 36, String(input.mriResult ?? "ALL GOOD"))}
 
-  <text x="${tableX + 12}" y="${tableY + 34 + bloodHeight + mriHeight + 24}" font-size="16" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Eye Test:</text>
-  ${renderEyeChartMini(tableX + 42, tableY + 34 + bloodHeight + mriHeight + 54)}
-  ${textLines(tableX + 16, tableY + 34 + bloodHeight + mriHeight + 214, eyeLines, { size: 11.5, color: "#111827", lineHeight: 16 })}
+  <text x="${tableX + 12}" y="${tableY + 34 + bloodHeight + mriHeight + 22}" font-size="16" font-weight="800" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>Eye Test:</text>
+  ${renderEyeChartMini(tableX + 24, tableY + 34 + bloodHeight + mriHeight + 36)}
+  ${textLines(tableX + 16, tableY + 34 + bloodHeight + mriHeight + 164, eyeLines, { size: 9.8, weight: 700, color: "#111827", lineHeight: 12.5, family: SECTION_FONT })}
   ${renderResultBadge(resultX + 8, tableY + 34 + bloodHeight + mriHeight + (eyeHeight / 2) + 2, resultColW - 16, 36, String(input.eyeResult ?? "ALL GOOD"))}
 
-  <text x="${marginX}" y="${signatureY}" font-size="14" font-weight="700" fill="#2563eb" text-decoration="underline" font-family="'Times New Roman', serif">Signature of Medical Officer:</text>
-  <text x="${marginX + 216}" y="${signatureY - 2}" font-size="24" fill="#111827" font-family="'Segoe Script', 'Brush Script MT', cursive">${esc(officerSignature)}</text>
+  <text x="${marginX}" y="${signatureY}" font-size="14" font-weight="700" fill="#2563eb" text-decoration="underline" font-family=${JSON.stringify(SECTION_FONT)}>Signature of Medical Officer:</text>
+  <text x="${marginX + 216}" y="${signatureY - 2}" font-size="24" fill="#111827" font-family=${JSON.stringify(SIGNATURE_FONT)}>${esc(officerSignature)}</text>
   <line x1="${marginX + 205}" y1="${signatureY + 6}" x2="${marginX + 420}" y2="${signatureY + 6}" stroke="#94a3b8" stroke-width="1"/>
 
   <line x1="${pageX + 26}" y1="${secondPageHeaderTop}" x2="${pageX + pageWidth - 26}" y2="${secondPageHeaderTop}" stroke="#444" stroke-width="1"/>
   ${renderMountZonahMark(pageX + 42, secondPageHeaderTop + 6, 52)}
   ${renderMountZonahMark(pageX + pageWidth - 94, secondPageHeaderTop + 6, 52)}
-  <text x="${pageX + pageWidth / 2}" y="${secondPageHeaderTop + 30}" text-anchor="middle" font-size="31" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MOUNT ZONAH</text>
-  <text x="${pageX + pageWidth / 2}" y="${secondPageHeaderTop + 68}" text-anchor="middle" font-size="17" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">MEDICAL FITNESS CERTIFICATE</text>
+  <text x="${pageX + pageWidth / 2}" y="${secondPageHeaderTop + 30}" text-anchor="middle" font-size="31" font-weight="800" fill="#111827" font-family=${JSON.stringify(DISPLAY_FONT)}>MOUNT ZONAH</text>
+  <text x="${pageX + pageWidth / 2}" y="${secondPageHeaderTop + 68}" text-anchor="middle" font-size="17" font-weight="700" fill="#111827" font-family=${JSON.stringify(DISPLAY_BLACK_FONT)}>MEDICAL FITNESS CERTIFICATE</text>
   <line x1="${pageX + 26}" y1="${secondPageHeaderTop + 84}" x2="${pageX + pageWidth - 26}" y2="${secondPageHeaderTop + 84}" stroke="#444" stroke-width="1"/>
-  <text x="${pageX + pageWidth / 2}" y="${page2Y + 158}" text-anchor="middle" font-size="18" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Applicant Information</text>
+  <text x="${pageX + pageWidth / 2}" y="${page2Y + 158}" text-anchor="middle" font-size="18" font-weight="800" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>Applicant Information</text>
 
-  <text x="${pageX + 58}" y="${page2FieldStartY}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Name: ${esc(fieldMap["Name"])}</text>
-  <text x="${pageX + 58}" y="${page2FieldStartY + page2FieldGap}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Sex: ${esc(fieldMap["Sex"])}</text>
-  <text x="${pageX + 58}" y="${page2FieldStartY + page2FieldGap * 2}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">D.O.B: ${esc(fieldMap["D.O.B"])}</text>
-  <text x="${pageX + 58}" y="${page2FieldStartY + page2FieldGap * 3}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">CID: ${esc(fieldMap["CID"])}</text>
-  <text x="${pageX + 58}" y="${page2FieldStartY + page2FieldGap * 4}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Number: ${esc(fieldMap["Number"])}</text>
-  <text x="${pageX + 58}" y="${page2FieldStartY + page2FieldGap * 5}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Weight: ${esc(fieldMap["Weight"])}</text>
-  <text x="${pageX + 58}" y="${page2FieldStartY + page2FieldGap * 6}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">MFC Reason: ${esc(fieldMap["MFC Reason"])}</text>
-  <text x="${pageX + 58}" y="${page2LastFieldY}" font-size="14" font-weight="700" fill="#111827" font-family="'Times New Roman', serif">Date: ${esc(fieldMap["Date"])}</text>
+  <text x="${pageX + 58}" y="${page2FieldStartY}" font-size="14" font-weight="700" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>Name: ${esc(fieldMap["Name"])}</text>
+  <text x="${pageX + 58}" y="${page2FieldStartY + page2FieldGap}" font-size="14" font-weight="700" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>Sex: ${esc(fieldMap["Sex"])}</text>
+  <text x="${pageX + 58}" y="${page2FieldStartY + page2FieldGap * 2}" font-size="14" font-weight="700" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>D.O.B: ${esc(fieldMap["D.O.B"])}</text>
+  <text x="${pageX + 58}" y="${page2FieldStartY + page2FieldGap * 3}" font-size="14" font-weight="700" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>CID: ${esc(fieldMap["CID"])}</text>
+  <text x="${pageX + 58}" y="${page2FieldStartY + page2FieldGap * 4}" font-size="14" font-weight="700" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>Number: ${esc(fieldMap["Number"])}</text>
+  <text x="${pageX + 58}" y="${page2FieldStartY + page2FieldGap * 5}" font-size="14" font-weight="700" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>Weight: ${esc(fieldMap["Weight"])}</text>
+  <text x="${pageX + 58}" y="${page2FieldStartY + page2FieldGap * 6}" font-size="14" font-weight="700" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>MFC Reason: ${esc(fieldMap["MFC Reason"])}</text>
+  <text x="${pageX + 58}" y="${page2LastFieldY}" font-size="14" font-weight="700" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>Date: ${esc(fieldMap["Date"])}</text>
   ${renderPhotoFrame(pageX + 506, secondPhotoY, secondPhotoW, secondPhotoH, photoUrl)}
 
-  <text x="${pageX + 58}" y="${descriptionY}" font-size="16" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">Description:</text>
-  ${textLines(pageX + 182, descriptionTextY, summaryLines, { size: 14, weight: 700, color: "#111827", lineHeight: 22 })}
+  <text x="${pageX + 58}" y="${descriptionY}" font-size="16" font-weight="800" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>Description:</text>
+  ${textLines(pageX + 182, descriptionTextY, summaryLines, { size: 14, weight: 700, color: "#111827", lineHeight: 22, family: SECTION_FONT })}
 
-  <text x="${pageX + 58}" y="${officerNameY}" font-size="16" font-weight="800" fill="#2563eb" text-decoration="underline" font-family="'Times New Roman', serif">Name of Medical Officer:</text>
-  <text x="${pageX + 286}" y="${officerNameY}" font-size="16" font-weight="800" fill="#111827" font-family="'Times New Roman', serif">${esc(officerName)}</text>
-  <text x="${pageX + 58}" y="${officerSignatureY}" font-size="16" font-weight="800" fill="#2563eb" text-decoration="underline" font-family="'Times New Roman', serif">Signature of Medical Officer:</text>
-  <text x="${pageX + 318}" y="${officerSignatureY - 3}" font-size="24" fill="#111827" font-family="'Segoe Script', 'Brush Script MT', cursive">${esc(officerSignature)}</text>
+  <text x="${pageX + 58}" y="${officerNameY}" font-size="16" font-weight="800" fill="#2563eb" text-decoration="underline" font-family=${JSON.stringify(SECTION_FONT)}>Name of Medical Officer:</text>
+  <text x="${pageX + 286}" y="${officerNameY}" font-size="16" font-weight="800" fill="#111827" font-family=${JSON.stringify(SECTION_FONT)}>${esc(officerName)}</text>
+  <text x="${pageX + 58}" y="${officerSignatureY}" font-size="16" font-weight="800" fill="#2563eb" text-decoration="underline" font-family=${JSON.stringify(SECTION_FONT)}>Signature of Medical Officer:</text>
+  <text x="${pageX + 318}" y="${officerSignatureY - 3}" font-size="24" fill="#111827" font-family=${JSON.stringify(SIGNATURE_FONT)}>${esc(officerSignature)}</text>
 </svg>`;
 }
 
