@@ -181,7 +181,7 @@ function PhotoBox({
   imageClassName?: string;
 }) {
   const frameClassName = className || "h-[240px] w-[180px]";
-  const resolvedImageClassName = imageClassName || "h-full w-full object-contain object-bottom px-2 pt-2";
+  const resolvedImageClassName = imageClassName || "h-full w-full object-cover object-center px-1 pt-1";
   if (url.trim()) {
     return (
       <div className={`relative ${frameClassName} overflow-hidden border border-slate-500 bg-[#d8d4cd] shadow-sm`}>
@@ -389,7 +389,7 @@ function StaticMfcPageOne({ draft }: { draft: MfcDraft }) {
             <StaticFieldRow label="Date" value={valueOf(draft, "examDateText")} />
           </div>
           <div className="flex justify-center md:justify-end">
-            <PhotoBox url={valueOf(draft, "sourceAttachmentUrl")} className="h-[162px] w-[130px]" imageClassName="h-full w-full object-contain object-bottom px-2 pt-2" />
+            <PhotoBox url={valueOf(draft, "sourceAttachmentUrl")} className="h-[162px] w-[130px]" imageClassName="h-full w-full object-cover object-center px-1 pt-1" />
           </div>
         </div>
 
@@ -438,7 +438,7 @@ function StaticMfcPageTwo({ draft }: { draft: MfcDraft }) {
             <StaticFieldRow label="Date" value={valueOf(draft, "examDateText")} />
           </div>
           <div className="flex justify-center md:justify-end">
-            <PhotoBox url={valueOf(draft, "sourceAttachmentUrl")} className="h-[162px] w-[130px]" imageClassName="h-full w-full object-contain object-bottom px-2 pt-2" />
+            <PhotoBox url={valueOf(draft, "sourceAttachmentUrl")} className="h-[162px] w-[130px]" imageClassName="h-full w-full object-cover object-center px-1 pt-1" />
           </div>
         </div>
 
@@ -677,7 +677,7 @@ export default function DoctorMfcDetail() {
                   <EditableField label="Date" value={valueOf(draft, "examDateText")} onChange={(value) => setField("examDateText", value)} />
                 </div>
                 <div className="flex justify-center md:justify-end">
-                  <PhotoBox url={resolvedPhotoUrl || valueOf(draft, "sourceAttachmentUrl")} imageClassName="h-full w-full object-contain object-bottom px-2 pt-2" />
+                  <PhotoBox url={resolvedPhotoUrl || valueOf(draft, "sourceAttachmentUrl")} imageClassName="h-full w-full object-cover object-center px-1 pt-1" />
                 </div>
               </div>
 
@@ -744,7 +744,7 @@ export default function DoctorMfcDetail() {
                   <EditableField label="Date" value={valueOf(draft, "examDateText")} onChange={(value) => setField("examDateText", value)} />
                 </div>
                 <div className="flex justify-center md:justify-end">
-                  <PhotoBox url={resolvedPhotoUrl || valueOf(draft, "sourceAttachmentUrl")} imageClassName="h-full w-full object-contain object-bottom px-2 pt-2" />
+                  <PhotoBox url={resolvedPhotoUrl || valueOf(draft, "sourceAttachmentUrl")} imageClassName="h-full w-full object-cover object-center px-1 pt-1" />
                 </div>
               </div>
 
