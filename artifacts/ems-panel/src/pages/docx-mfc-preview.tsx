@@ -263,7 +263,7 @@ export default function DocxMfcPreview() {
     const referencePage = pages[0] ?? target;
     const pageRect = referencePage.getBoundingClientRect();
     const exportWidth = Math.ceil(pageRect.width);
-    const exportHeight = measurePageContentHeight(target);
+    const exportHeight = page === 1 ? Math.ceil(pageRect.height) : measurePageContentHeight(target);
 
     setDownloadingPage(page);
     try {
