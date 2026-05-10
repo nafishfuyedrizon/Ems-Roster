@@ -154,11 +154,9 @@ function ReportRow({
 function PaperSection({
   children,
   title,
-  subtitle,
 }: {
   children: React.ReactNode;
   title?: string;
-  subtitle?: string;
 }) {
   return (
     <section className="overflow-hidden rounded-[24px] border border-slate-300 bg-[#fffdf8] shadow-[0_24px_80px_rgba(15,23,42,0.14)]">
@@ -172,7 +170,6 @@ function PaperSection({
           <CertificateMark className="mx-auto h-16 w-16" />
         </div>
         {title ? <div className="mt-6 text-left text-[18px] font-semibold text-slate-900">{title}</div> : null}
-        {subtitle ? <div className="mt-2 text-left text-sm text-slate-500">{subtitle}</div> : null}
       </div>
       <div className="p-8">{children}</div>
     </section>
@@ -232,7 +229,7 @@ export default function DoctorMfcDetail() {
     <DoctorPageShell>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-6">
-          <PaperSection title="Applicant Information" subtitle="Logo, design, and applicant photo are now part of the editable certificate layout.">
+          <PaperSection title="Applicant Information">
             <div className="grid gap-6">
               <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
                 <div className="grid gap-5">
@@ -248,14 +245,6 @@ export default function DoctorMfcDetail() {
 
                 <div className="grid gap-4">
                   <PhotoPreview url={certificateValue(draft, "sourceAttachmentUrl")} />
-                  <CertificateField
-                    label="Applicant Photo URL"
-                    value={certificateValue(draft, "sourceAttachmentUrl")}
-                    onChange={(value) => setField("sourceAttachmentUrl", value)}
-                  />
-                  <p className="text-xs leading-6 text-slate-500">
-                    Direct image link দিলে certificate-এর photo box-এ preview আর generated print version-এও ওই ছবি যাবে।
-                  </p>
                 </div>
               </div>
 
@@ -345,7 +334,23 @@ export default function DoctorMfcDetail() {
           <CardHeader>
             <CardTitle>Printer Links</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-6">
+            <div className="grid gap-4 rounded-[18px] border border-border/60 bg-background/40 p-4">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.34em] text-muted-foreground">Applicant Photo URL</div>
+                <p className="mt-2 text-xs leading-6 text-muted-foreground">
+                  Direct image link দিলে certificate-এর photo box-এ preview আর generated print version-এও ওই ছবি যাবে।
+                </p>
+              </div>
+              <Input
+                value={certificateValue(draft, "sourceAttachmentUrl")}
+                onChange={(event) => setField("sourceAttachmentUrl", event.target.value)}
+                placeholder="https://..."
+              />
+              <div className="overflow-hidden rounded-[18px] border border-border/60 bg-background">
+                <PhotoPreview url={certificateValue(draft, "sourceAttachmentUrl")} />
+              </div>
+            </div>
             <PrintVersionsPanel documentType="mfc" documentId={id} />
           </CardContent>
         </Card>
