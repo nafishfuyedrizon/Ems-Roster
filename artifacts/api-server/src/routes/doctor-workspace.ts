@@ -877,59 +877,125 @@ router.patch("/mfc-cases/:id", requireDoctorAuth, async (req, res) => {
 });
 
 router.post("/mfc-cases/:id/complete", requireDoctorAuth, async (req, res) => {
-  const id = Number(req.params.id);
-  const session = doctorActor(req);
-  const [existing] = await db.select().from(mfcCasesTable).where(eq(mfcCasesTable.id, id)).limit(1);
-  if (!existing) return res.status(404).json({ error: "MFC case not found." });
+  try {
+    const id = Number(req.params.id);
+    const session = doctorActor(req);
+    const [existing] = await db.select().from(mfcCasesTable).where(eq(mfcCasesTable.id, id)).limit(1);
+    if (!existing) return res.status(404).json({ error: "MFC case not found." });
 
-  const completedAt = new Date();
-  let posted:
-    | {
-        discordMessageId: string | null;
-        discordChannelId: string;
+    const completedAt = new Date();
+    let posted:
+      | {
+          discordMessageId: string | null;
+          discordChannelId: string;
+        }
+      | null = null;
+
+    if (!existing.discordMessageId) {
+      const previewRow = {
+        ...existing,
+        status: "completed",
+        completedAt,
+        updatedAt: completedAt,
+        sourceAuthorName: session.name,
+      } satisfies typeof mfcCasesTable.$inferSelect;
+
+      try {
+        posted = await postCompletedMfcToDiscord(previewRow, session);
+      } catch (discordError) {
+        console.warn("[DOCTOR-MFC] Discord post failed during complete.", discordError);
+        const message = discordError instanceof Error && discordError.message.trim()
+          ? discordError.message.trim()
+          : "Discord post failed during MFC completion.";
+        return res.status(502).json({ error: message });
       }
-    | null = null;
+    }
 
-  if (!existing.discordMessageId) {
-    const previewRow = {
-      ...existing,
+    await db.update(mfcCasesTable).set({
       status: "completed",
       completedAt,
       updatedAt: completedAt,
+      ...(posted?.discordMessageId
+        ? {
+            discordMessageId: posted.discordMessageId,
+            discordChannelId: posted.discordChannelId,
+            sourceAuthorName: session.name,
+            postedAt: completedAt,
+          }
+        : {}),
+    }).where(eq(mfcCasesTable.id, id));
+
+    try {
+      await createMfcEvent(id, "completed", "doctor", session.callSign, "MFC case completed");
+    } catch (eventError) {
+      console.warn("[DOCTOR-MFC] Event log write failed during complete; continuing.", eventError);
+    }
+    return res.status(204).send();
+  } catch (error) {
+    console.error("[DOCTOR-MFC] Complete route failed.", error);
+    const message = error instanceof Error && error.message.trim()
+      ? error.message.trim()
+      : "Could not complete this MFC case.";
+    return res.status(500).json({ error: message });
+  }
+});
+
+router.post("/mfc-cases/:id/post-to-discord", requireDoctorAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const session = doctorActor(req);
+    const [existing] = await db.select().from(mfcCasesTable).where(eq(mfcCasesTable.id, id)).limit(1);
+    if (!existing) return res.status(404).json({ error: "MFC case not found." });
+    if (existing.discordMessageId) {
+      return res.status(409).json({ error: "This MFC case is already posted to Discord." });
+    }
+
+    const postedAt = new Date();
+    const previewRow = {
+      ...existing,
+      status: "completed",
+      completedAt: existing.completedAt ?? postedAt,
+      updatedAt: postedAt,
       sourceAuthorName: session.name,
     } satisfies typeof mfcCasesTable.$inferSelect;
 
+    let posted:
+      | {
+          discordMessageId: string | null;
+          discordChannelId: string;
+        }
+      | null = null;
     try {
       posted = await postCompletedMfcToDiscord(previewRow, session);
     } catch (discordError) {
-      console.warn("[DOCTOR-MFC] Discord post failed during complete.", discordError);
+      console.warn("[DOCTOR-MFC] Discord post failed during retry.", discordError);
       const message = discordError instanceof Error && discordError.message.trim()
         ? discordError.message.trim()
-        : "Discord post failed during MFC completion.";
+        : "Discord post failed during retry.";
       return res.status(502).json({ error: message });
     }
-  }
 
-  await db.update(mfcCasesTable).set({
-    status: "completed",
-    completedAt,
-    updatedAt: completedAt,
-    ...(posted?.discordMessageId
-      ? {
-          discordMessageId: posted.discordMessageId,
-          discordChannelId: posted.discordChannelId,
-          sourceAuthorName: session.name,
-          postedAt: completedAt,
-        }
-      : {}),
-  }).where(eq(mfcCasesTable.id, id));
+    await db.update(mfcCasesTable).set({
+      updatedAt: postedAt,
+      ...(existing.status === "completed" ? {} : { status: "completed", completedAt: postedAt }),
+      ...(posted?.discordMessageId
+        ? {
+            discordMessageId: posted.discordMessageId,
+            discordChannelId: posted.discordChannelId,
+            sourceAuthorName: session.name,
+            postedAt,
+          }
+        : {}),
+    }).where(eq(mfcCasesTable.id, id));
 
-  try {
-    await createMfcEvent(id, "completed", "doctor", session.callSign, "MFC case completed");
-  } catch (eventError) {
-    console.warn("[DOCTOR-MFC] Event log write failed during complete; continuing.", eventError);
+    return res.status(204).send();
+  } catch (error) {
+    console.error("[DOCTOR-MFC] Post-to-Discord route failed.", error);
+    const message = error instanceof Error && error.message.trim()
+      ? error.message.trim()
+      : "Could not post this MFC case to Discord.";
+    return res.status(500).json({ error: message });
   }
-  return res.status(204).send();
 });
 
 router.get("/prescriptions", requireDoctorAuth, async (_req, res) => {

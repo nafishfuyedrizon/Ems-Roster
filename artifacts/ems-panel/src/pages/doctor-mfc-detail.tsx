@@ -693,6 +693,26 @@ export default function DoctorMfcDetail() {
     }
   };
 
+  const postToDiscord = async () => {
+    try {
+      setIsCompleting(true);
+      await doctorFetch(`/mfc-cases/${id}/post-to-discord`, { method: "POST" });
+      await queryClient.invalidateQueries({ queryKey: ["doctor-mfc-detail", id] });
+      toast({
+        title: "Posted to Discord",
+        description: "The completed MFC pages were sent to the Discord channel.",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to post to Discord",
+        description: error instanceof Error ? error.message : "Could not post this MFC case to Discord.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
   const isCompleted = valueOf(draft, "status") === "completed";
   const needsDiscordPost = isCompleted && !valueOf(draft, "discordMessageId").trim();
 
@@ -769,7 +789,7 @@ export default function DoctorMfcDetail() {
                 {needsDiscordPost ? (
                   <Button
                     type="button"
-                    onClick={() => void complete()}
+                    onClick={() => void postToDiscord()}
                     disabled={isCompleting}
                     className="border-amber-300/70 bg-amber-400/15 text-amber-100 hover:bg-amber-400/25"
                   >
