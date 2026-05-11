@@ -1,7 +1,16 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { CalendarDays, ClipboardList, FileText, HeartPulse, Home, Pill, ShieldCheck, UserRoundSearch, WalletCards } from "lucide-react";
+import { CalendarDays, ChevronDown, ClipboardList, FileText, HeartPulse, Home, LogOut, Pill, ShieldCheck, Sparkles, UserRound, UserRoundSearch, WalletCards } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { PersonnelDossierDialog } from "@/components/personnel-dossier-dialog";
 import { cn } from "@/lib/utils";
 import { useDoctorAuth } from "@/hooks/use-doctor-auth";
 import emsLogo from "@/assets/ems-logo.webp";
@@ -21,6 +30,7 @@ const navItems = [
 export function DoctorLayout({ children }: { children: React.ReactNode }) {
   const { doctor, refresh, logout } = useDoctorAuth();
   const [location] = useLocation();
+  const [profileOpenId, setProfileOpenId] = useState<number | null>(null);
 
   useEffect(() => {
     void refresh();
@@ -40,7 +50,45 @@ export function DoctorLayout({ children }: { children: React.ReactNode }) {
             </div>
           </Link>
 
-          <div className="hidden items-center gap-2 lg:flex">
+          <div className="hidden items-center gap-3 lg:flex">
+            {doctor ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="group flex items-center gap-3 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/12 via-cyan-400/10 to-transparent px-3 py-2 text-left shadow-[0_14px_30px_rgba(0,229,255,0.08)] transition-all hover:border-primary/35 hover:bg-primary/15">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/12 text-primary shadow-inner">
+                      <UserRound className="h-5 w-5" />
+                    </div>
+                    <div className="leading-tight">
+                      <div className="text-sm font-semibold text-foreground">{doctor.name}</div>
+                      <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary/90">
+                        {doctor.callSign} · {doctor.rank}
+                      </div>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64 rounded-2xl border-primary/15 bg-card/95 p-2 shadow-[0_24px_50px_rgba(0,0,0,0.35)]">
+                  <DropdownMenuLabel className="rounded-xl bg-primary/10 px-3 py-2">
+                    <div className="text-sm font-semibold text-foreground">{doctor.name}</div>
+                    <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
+                      {doctor.callSign} · {doctor.rank}
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-border/40" />
+                  <DropdownMenuItem
+                    className="rounded-xl px-3 py-2.5 font-medium"
+                    onClick={() => setProfileOpenId(doctor.memberId)}
+                  >
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    Open EMS Profile Card
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="rounded-xl px-3 py-2.5 font-medium" onClick={() => void logout()}>
+                    <LogOut className="h-4 w-4 text-primary" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
             {doctor ? (
               <Button variant="outline" onClick={() => void logout()} className="font-mono text-xs">
                 Logout
@@ -71,6 +119,7 @@ export function DoctorLayout({ children }: { children: React.ReactNode }) {
       </header>
 
       <main className="mx-auto w-full max-w-screen-2xl px-4 py-5 sm:px-6 sm:py-8">{children}</main>
+      <PersonnelDossierDialog memberId={profileOpenId} onClose={() => setProfileOpenId(null)} />
     </div>
   );
 }
