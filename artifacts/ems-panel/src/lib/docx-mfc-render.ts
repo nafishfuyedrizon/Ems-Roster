@@ -104,12 +104,13 @@ function buildPhotoFrame(photoSrc: string, top: string) {
   return frame;
 }
 
-function normalizeRenderedPhotoPlacement(host: HTMLDivElement) {
+function normalizeRenderedPhotoPlacement(host: HTMLDivElement, photoSrcOverride?: string) {
   const images = Array.from(host.querySelectorAll("img")) as HTMLImageElement[];
   const pages = Array.from(host.querySelectorAll("section.docx-preview")) as HTMLElement[];
-  if (images.length === 0 || pages.length === 0) return;
+  if (pages.length === 0) return;
 
   const photoSrc =
+    photoSrcOverride?.trim() ||
     images
       .map((image) => image.currentSrc || image.src)
       .filter(Boolean)
@@ -186,7 +187,11 @@ function measurePageContentHeight(page: HTMLElement) {
   return contentBottom > 0 ? Math.ceil(contentBottom + 24) : Math.ceil(targetRect.height);
 }
 
-export async function renderDocxMfcPreview(host: HTMLDivElement, buffer: ArrayBuffer) {
+export async function renderDocxMfcPreview(
+  host: HTMLDivElement,
+  buffer: ArrayBuffer,
+  options?: { photoSrcOverride?: string },
+) {
   host.innerHTML = "";
   await renderAsync(buffer, host, host, {
     className: "docx-preview",
@@ -199,7 +204,7 @@ export async function renderDocxMfcPreview(host: HTMLDivElement, buffer: ArrayBu
   });
 
   const pageCount = splitRenderedDocxPages(host);
-  normalizeRenderedPhotoPlacement(host);
+  normalizeRenderedPhotoPlacement(host, options?.photoSrcOverride);
   await waitForImages(host);
   return pageCount;
 }

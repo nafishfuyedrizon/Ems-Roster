@@ -684,7 +684,9 @@ export default function DoctorMfcDetail() {
     document.body.appendChild(host);
 
     try {
-      await renderDocxMfcPreview(host, buffer);
+      await renderDocxMfcPreview(host, buffer, {
+        photoSrcOverride: resolvedPhotoUrl || valueOf(draft, "sourceAttachmentUrl"),
+      });
       const [page1Blob, page2Blob] = await Promise.all([
         renderedDocxPageToBlob(host, 1),
         renderedDocxPageToBlob(host, 2),

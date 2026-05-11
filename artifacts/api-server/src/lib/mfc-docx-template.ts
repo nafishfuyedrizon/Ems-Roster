@@ -143,7 +143,13 @@ async function resolveSourcePhotoBuffer(url: unknown) {
 }
 
 async function buildTemplatePortrait(url: unknown) {
-  const source = await resolveSourcePhotoBuffer(url);
+  let source: Buffer | null = null;
+  try {
+    source = await resolveSourcePhotoBuffer(url);
+  } catch (error) {
+    console.warn("[MFC-DOCX] Could not resolve source photo for template portrait.", error);
+    return null;
+  }
   if (!source) return null;
 
   const sharpModule = await import("sharp");
