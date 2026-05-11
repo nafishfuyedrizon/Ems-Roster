@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { DoctorPageShell, useDoctorGuard } from "@/pages/doctor-shared";
-import { doctorFetch } from "@/lib/doctor-api";
+import { doctorFetch, doctorFetchRaw } from "@/lib/doctor-api";
 import { withApiPath } from "@/lib/api-base";
 import { renderDocxMfcPreview, renderedDocxPageToBlob } from "@/lib/docx-mfc-render";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import { PrintVersionsPanel } from "@/pages/doctor-components";
 import type { DoctorSession } from "@/hooks/use-doctor-auth";
 import { useToast } from "@/hooks/use-toast";
 import { MFC_EYE_CHART_DATA_URI, MFC_LOGO_DATA_URI } from "@/lib/mfc-assets";
+import { readApiError } from "@/lib/read-api-error";
 
 const DISPLAY_FONT = '"Playfair Display", Georgia, serif';
 const DISPLAY_BLACK_FONT = '"Playfair Display Black", "Playfair Display", Georgia, serif';
@@ -743,16 +744,15 @@ export default function DoctorMfcDetail() {
 
   const fetchDocxTemplateBuffer = async () => {
     const templatePayload = await buildDocxTemplatePayload();
-    const response = await fetch(withApiPath(`/documents/mfc/${id}/template.docx`), {
+    const response = await doctorFetchRaw(`/documents/mfc/${id}/template.docx`, {
       method: "POST",
-      credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(templatePayload),
     });
     if (!response.ok) {
-      throw new Error(`DOCX fetch failed with status ${response.status}`);
+      throw new Error(await readApiError(response));
     }
     return response.arrayBuffer();
   };

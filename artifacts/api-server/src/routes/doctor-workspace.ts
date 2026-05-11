@@ -1350,40 +1350,56 @@ router.get("/documents/:type/:id/image.png", async (req, res) => {
 });
 
 router.get("/documents/:type/:id/template.docx", async (req, res) => {
-  const documentType = String(req.params.type);
-  const documentId = Number(req.params.id);
-  if (documentType !== "mfc") return res.status(404).send("Not found");
-  const document = await loadDocumentPayload(documentType, documentId);
-  if (!document) return res.status(404).send("Not found");
+  try {
+    const documentType = String(req.params.type);
+    const documentId = Number(req.params.id);
+    if (documentType !== "mfc") return res.status(404).send("Not found");
+    const [row] = await db.select().from(mfcCasesTable).where(eq(mfcCasesTable.id, documentId)).limit(1);
+    if (!row) return res.status(404).send("Not found");
 
-  const docx = await generateMfcTemplateDocx(document.row as Record<string, unknown>);
-  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-  res.setHeader("Cache-Control", "public, max-age=300");
-  if (req.query.download !== undefined) {
-    res.setHeader("Content-Disposition", `attachment; filename="${documentType}-${documentId}-template.docx"`);
+    const docx = await generateMfcTemplateDocx(row as Record<string, unknown>);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    res.setHeader("Cache-Control", "public, max-age=300");
+    if (req.query.download !== undefined) {
+      res.setHeader("Content-Disposition", `attachment; filename="${documentType}-${documentId}-template.docx"`);
+    }
+    return res.send(docx);
+  } catch (error) {
+    const message = error instanceof Error && error.message.trim()
+      ? error.message.trim()
+      : "Could not build the MFC DOCX template.";
+    console.error("[DOCTOR-MFC] Template DOCX GET failed.", error);
+    return res.status(500).json({ error: message });
   }
-  return res.send(docx);
 });
 
 router.post("/documents/:type/:id/template.docx", requireDoctorAuth, async (req, res) => {
-  const documentType = String(req.params.type);
-  const documentId = Number(req.params.id);
-  if (documentType !== "mfc") return res.status(404).send("Not found");
-  const document = await loadDocumentPayload(documentType, documentId);
-  if (!document) return res.status(404).send("Not found");
+  try {
+    const documentType = String(req.params.type);
+    const documentId = Number(req.params.id);
+    if (documentType !== "mfc") return res.status(404).send("Not found");
+    const [row] = await db.select().from(mfcCasesTable).where(eq(mfcCasesTable.id, documentId)).limit(1);
+    if (!row) return res.status(404).send("Not found");
 
-  const docxInput = {
-    ...(document.row as Record<string, unknown>),
-    ...(req.body && typeof req.body === "object" ? req.body : {}),
-  };
+    const docxInput = {
+      ...(row as Record<string, unknown>),
+      ...(req.body && typeof req.body === "object" ? req.body : {}),
+    };
 
-  const docx = await generateMfcTemplateDocx(docxInput);
-  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-  res.setHeader("Cache-Control", "no-store");
-  if (req.query.download !== undefined) {
-    res.setHeader("Content-Disposition", `attachment; filename="${documentType}-${documentId}-template.docx"`);
+    const docx = await generateMfcTemplateDocx(docxInput);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    res.setHeader("Cache-Control", "no-store");
+    if (req.query.download !== undefined) {
+      res.setHeader("Content-Disposition", `attachment; filename="${documentType}-${documentId}-template.docx"`);
+    }
+    return res.send(docx);
+  } catch (error) {
+    const message = error instanceof Error && error.message.trim()
+      ? error.message.trim()
+      : "Could not build the MFC DOCX template.";
+    console.error("[DOCTOR-MFC] Template DOCX POST failed.", error);
+    return res.status(500).json({ error: message });
   }
-  return res.send(docx);
 });
 
 router.get("/documents/:type/:id/page/:page.png", async (req, res) => {
