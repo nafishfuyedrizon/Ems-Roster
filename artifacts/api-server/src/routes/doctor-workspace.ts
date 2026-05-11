@@ -28,6 +28,7 @@ import {
 } from "../lib/medical-helpers";
 import { explainRankRequirement, rankMeetsRequirement } from "../lib/medical-permissions";
 import { ensureMedicalSeeds } from "../lib/medical-seed";
+import { generateMfcTemplateDocx } from "../lib/mfc-docx-template";
 
 const router = Router();
 const MDT_API_BASE = process.env.MDT_API_BASE?.trim() || "https://mdt-server.legacyrpbd.com";
