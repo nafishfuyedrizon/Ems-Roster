@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import {
   db,
   doctorAppointmentsTable,
@@ -103,6 +103,21 @@ function doctorActor(req: import("express").Request) {
     rank: string;
     name: string;
   };
+}
+
+function appointmentVisibilityFilter(doctorAccountId: number) {
+  return or(
+    isNull(doctorAppointmentsTable.assignedDoctorAccountId),
+    eq(doctorAppointmentsTable.assignedDoctorAccountId, doctorAccountId),
+  );
+}
+
+function ownedMfcFilter(id: number, doctorAccountId: number) {
+  return and(eq(mfcCasesTable.id, id), eq(mfcCasesTable.doctorAccountId, doctorAccountId));
+}
+
+function ownedPrescriptionFilter(id: number, doctorAccountId: number) {
+  return and(eq(prescriptionsTable.id, id), eq(prescriptionsTable.doctorAccountId, doctorAccountId));
 }
 
 function toIso(value: Date | null | undefined) {
@@ -324,12 +339,12 @@ function mdtCharacterMatchScore(character: MdtCharacter, query: string) {
   return 0;
 }
 
-async function getPatientTimeline(patientId: number) {
+async function getPatientTimeline(patientId: number, doctorAccountId: number) {
   const [appointments, records, mfcs, prescriptions] = await Promise.all([
-    db.select().from(doctorAppointmentsTable).where(eq(doctorAppointmentsTable.patientId, patientId)),
+    db.select().from(doctorAppointmentsTable).where(and(eq(doctorAppointmentsTable.patientId, patientId), appointmentVisibilityFilter(doctorAccountId))),
     db.select().from(medicalRecordsTable).where(eq(medicalRecordsTable.patientId, patientId)),
-    db.select().from(mfcCasesTable).where(eq(mfcCasesTable.patientId, patientId)),
-    db.select().from(prescriptionsTable).where(eq(prescriptionsTable.patientId, patientId)),
+    db.select().from(mfcCasesTable).where(and(eq(mfcCasesTable.patientId, patientId), eq(mfcCasesTable.doctorAccountId, doctorAccountId))),
+    db.select().from(prescriptionsTable).where(and(eq(prescriptionsTable.patientId, patientId), eq(prescriptionsTable.doctorAccountId, doctorAccountId))),
   ]);
 
   return [
@@ -340,8 +355,8 @@ async function getPatientTimeline(patientId: number) {
   ].sort((a, b) => String(b.occurredAt ?? "").localeCompare(String(a.occurredAt ?? "")));
 }
 
-async function getPatientSearchCard(patient: typeof patientsTable.$inferSelect) {
-  const timeline = await getPatientTimeline(patient.id);
+async function getPatientSearchCard(patient: typeof patientsTable.$inferSelect, doctorAccountId: number) {
+  const timeline = await getPatientTimeline(patient.id, doctorAccountId);
   return {
     ...patient,
     createdAt: patient.createdAt.toISOString(),
@@ -673,12 +688,13 @@ async function createPrintVersion(req: import("express").Request, documentType: 
   }
 }
 
-router.get("/doctor-dashboard", requireDoctorAuth, async (_req, res) => {
+router.get("/doctor-dashboard", requireDoctorAuth, async (req, res) => {
   await ensureMedicalSeeds();
+  const session = doctorActor(req);
   const [appointments, mfcCases, prescriptions, patients] = await Promise.all([
-    db.select().from(doctorAppointmentsTable),
-    db.select().from(mfcCasesTable),
-    db.select().from(prescriptionsTable),
+    db.select().from(doctorAppointmentsTable).where(appointmentVisibilityFilter(session.doctorAccountId)),
+    db.select().from(mfcCasesTable).where(eq(mfcCasesTable.doctorAccountId, session.doctorAccountId)),
+    db.select().from(prescriptionsTable).where(eq(prescriptionsTable.doctorAccountId, session.doctorAccountId)),
     db.select().from(patientsTable),
   ]);
 
@@ -695,7 +711,8 @@ router.get("/doctor-dashboard", requireDoctorAuth, async (_req, res) => {
   });
 });
 
-router.get("/doctor-calendar", requireDoctorAuth, async (_req, res) => {
+router.get("/doctor-calendar", requireDoctorAuth, async (req, res) => {
+  const session = doctorActor(req);
   const rows = await db
     .select({
       id: doctorAppointmentsTable.id,
@@ -707,18 +724,21 @@ router.get("/doctor-calendar", requireDoctorAuth, async (_req, res) => {
       postedAt: doctorAppointmentsTable.postedAt,
     })
     .from(doctorAppointmentsTable)
+    .where(appointmentVisibilityFilter(session.doctorAccountId))
     .orderBy(desc(doctorAppointmentsTable.postedAt));
   return res.json(rows.map((row) => ({ ...row, postedAt: row.postedAt.toISOString() })));
 });
 
-router.get("/doctor-appointments", requireDoctorAuth, async (_req, res) => {
-  const rows = await db.select().from(doctorAppointmentsTable).orderBy(desc(doctorAppointmentsTable.postedAt));
+router.get("/doctor-appointments", requireDoctorAuth, async (req, res) => {
+  const session = doctorActor(req);
+  const rows = await db.select().from(doctorAppointmentsTable).where(appointmentVisibilityFilter(session.doctorAccountId)).orderBy(desc(doctorAppointmentsTable.postedAt));
   return res.json(rows.map((row) => ({ ...row, postedAt: row.postedAt.toISOString(), createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(), sourceDeletedAt: toIso(row.sourceDeletedAt), lastSyncedAt: row.lastSyncedAt.toISOString() })));
 });
 
 router.get("/doctor-appointments/:id", requireDoctorAuth, async (req, res) => {
   const id = Number(req.params.id);
-  const [appointment] = await db.select().from(doctorAppointmentsTable).where(eq(doctorAppointmentsTable.id, id)).limit(1);
+  const session = doctorActor(req);
+  const [appointment] = await db.select().from(doctorAppointmentsTable).where(and(eq(doctorAppointmentsTable.id, id), appointmentVisibilityFilter(session.doctorAccountId))).limit(1);
   if (!appointment) return res.status(404).json({ error: "Appointment not found." });
   return res.json({ ...appointment, postedAt: appointment.postedAt.toISOString(), createdAt: appointment.createdAt.toISOString(), updatedAt: appointment.updatedAt.toISOString() });
 });
@@ -726,6 +746,8 @@ router.get("/doctor-appointments/:id", requireDoctorAuth, async (req, res) => {
 router.patch("/doctor-appointments/:id", requireDoctorAuth, async (req, res) => {
   const id = Number(req.params.id);
   const session = doctorActor(req);
+  const [appointment] = await db.select().from(doctorAppointmentsTable).where(and(eq(doctorAppointmentsTable.id, id), appointmentVisibilityFilter(session.doctorAccountId))).limit(1);
+  if (!appointment) return res.status(404).json({ error: "Appointment not found." });
   const updateData: Partial<typeof doctorAppointmentsTable.$inferInsert> = { updatedAt: new Date() };
   if (typeof req.body?.status === "string") updateData.status = req.body.status as any;
   if (typeof req.body?.internalNotes === "string") updateData.internalNotes = req.body.internalNotes;
@@ -743,6 +765,7 @@ router.get("/patients", requireDoctorAuth, async (_req, res) => {
 });
 
 router.get("/mdt/characters/search", requireDoctorAuth, async (req, res) => {
+  const session = doctorActor(req);
   const query = String(req.query.q ?? "").trim();
   if (!query) {
     return res.json({ query: "", results: [] });
@@ -764,7 +787,7 @@ router.get("/mdt/characters/search", requireDoctorAuth, async (req, res) => {
   const results = await Promise.all(
     ranked.map(async ({ character }) => {
       const linkedPatient = linkedPatientByCid.get(String(character.character_id)) ?? null;
-      const workspaceCard = linkedPatient ? await getPatientSearchCard(linkedPatient) : null;
+      const workspaceCard = linkedPatient ? await getPatientSearchCard(linkedPatient, session.doctorAccountId) : null;
       return {
         characterId: character.character_id,
         name: `${character.first_name} ${character.last_name}`.trim(),
@@ -850,6 +873,7 @@ router.get("/patients/search", requireDoctorAuth, async (req, res) => {
     return res.json({ query: "", results: [] });
   }
 
+  const session = doctorActor(req);
   const rows = await db.select().from(patientsTable).orderBy(desc(patientsTable.updatedAt));
   const ranked = rows
     .map((patient) => ({ patient, score: patientMatchScore(patient, query) }))
@@ -857,15 +881,16 @@ router.get("/patients/search", requireDoctorAuth, async (req, res) => {
     .sort((a, b) => b.score - a.score || b.patient.updatedAt.getTime() - a.patient.updatedAt.getTime())
     .slice(0, 8);
 
-  const results = await Promise.all(ranked.map((entry) => getPatientSearchCard(entry.patient)));
+  const results = await Promise.all(ranked.map((entry) => getPatientSearchCard(entry.patient, session.doctorAccountId)));
   return res.json({ query, results });
 });
 
 router.get("/patients/:id", requireDoctorAuth, async (req, res) => {
   const id = Number(req.params.id);
+  const session = doctorActor(req);
   const [patient] = await db.select().from(patientsTable).where(eq(patientsTable.id, id)).limit(1);
   if (!patient) return res.status(404).json({ error: "Patient not found." });
-  const timeline = await getPatientTimeline(id);
+  const timeline = await getPatientTimeline(id, session.doctorAccountId);
   return res.json({ ...patient, createdAt: patient.createdAt.toISOString(), updatedAt: patient.updatedAt.toISOString(), timeline });
 });
 
@@ -891,8 +916,9 @@ router.patch("/medical-records/:id", requireDoctorAuth, async (req, res) => {
   return res.status(204).send();
 });
 
-router.get("/mfc-cases", requireDoctorAuth, async (_req, res) => {
-  const rows = await db.select().from(mfcCasesTable).orderBy(desc(mfcCasesTable.createdAt));
+router.get("/mfc-cases", requireDoctorAuth, async (req, res) => {
+  const session = doctorActor(req);
+  const rows = await db.select().from(mfcCasesTable).where(eq(mfcCasesTable.doctorAccountId, session.doctorAccountId)).orderBy(desc(mfcCasesTable.createdAt));
   return res.json(rows.map((row) => ({ ...row, completedAt: toIso(row.completedAt), createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() })));
 });
 
@@ -957,7 +983,8 @@ router.post("/mfc-cases", requireDoctorAuth, async (req, res) => {
 
 router.get("/mfc-cases/:id", requireDoctorAuth, async (req, res) => {
   const id = Number(req.params.id);
-  const [row] = await db.select().from(mfcCasesTable).where(eq(mfcCasesTable.id, id)).limit(1);
+  const session = doctorActor(req);
+  const [row] = await db.select().from(mfcCasesTable).where(ownedMfcFilter(id, session.doctorAccountId)).limit(1);
   if (!row) return res.status(404).json({ error: "MFC case not found." });
   return res.json({ ...row, completedAt: toIso(row.completedAt), createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() });
 });
@@ -965,12 +992,14 @@ router.get("/mfc-cases/:id", requireDoctorAuth, async (req, res) => {
 router.patch("/mfc-cases/:id", requireDoctorAuth, async (req, res) => {
   const id = Number(req.params.id);
   const session = doctorActor(req);
+  const [existing] = await db.select({ id: mfcCasesTable.id }).from(mfcCasesTable).where(ownedMfcFilter(id, session.doctorAccountId)).limit(1);
+  if (!existing) return res.status(404).json({ error: "MFC case not found." });
   const updateData: Partial<typeof mfcCasesTable.$inferInsert> = { updatedAt: new Date() };
   const keys = ["sex", "templateVariant", "applicantName", "cid", "number", "weight", "dateOfBirth", "mfcReason", "examDateText", "bloodTest", "bloodResult", "mriTest", "mriResult", "eyeTest", "eyeResult", "finalSummary", "officerName", "officerSignature", "sourceAttachmentUrl", "status"] as const;
   for (const key of keys) {
     if (req.body?.[key] !== undefined) (updateData as any)[key] = req.body[key];
   }
-  await db.update(mfcCasesTable).set(updateData).where(eq(mfcCasesTable.id, id));
+  await db.update(mfcCasesTable).set(updateData).where(ownedMfcFilter(id, session.doctorAccountId));
   try {
     await createMfcEvent(id, "updated", "doctor", session.callSign, "MFC case updated");
   } catch (eventError) {
@@ -983,7 +1012,7 @@ router.post("/mfc-cases/:id/complete", requireDoctorAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
     const session = doctorActor(req);
-    const [existing] = await db.select().from(mfcCasesTable).where(eq(mfcCasesTable.id, id)).limit(1);
+    const [existing] = await db.select().from(mfcCasesTable).where(ownedMfcFilter(id, session.doctorAccountId)).limit(1);
     if (!existing) return res.status(404).json({ error: "MFC case not found." });
 
     const completedAt = new Date();
@@ -1035,7 +1064,7 @@ router.post("/mfc-cases/:id/post-to-discord", requireDoctorAuth, async (req, res
   try {
     const id = Number(req.params.id);
     const session = doctorActor(req);
-    const [existing] = await db.select().from(mfcCasesTable).where(eq(mfcCasesTable.id, id)).limit(1);
+    const [existing] = await db.select().from(mfcCasesTable).where(ownedMfcFilter(id, session.doctorAccountId)).limit(1);
     if (!existing) return res.status(404).json({ error: "MFC case not found." });
     if (existing.discordMessageId) {
       return res.status(409).json({ error: "This MFC case is already posted to Discord." });
@@ -1083,8 +1112,9 @@ router.post("/mfc-cases/:id/post-to-discord", requireDoctorAuth, async (req, res
   }
 });
 
-router.get("/prescriptions", requireDoctorAuth, async (_req, res) => {
-  const rows = await db.select().from(prescriptionsTable).orderBy(desc(prescriptionsTable.createdAt));
+router.get("/prescriptions", requireDoctorAuth, async (req, res) => {
+  const session = doctorActor(req);
+  const rows = await db.select().from(prescriptionsTable).where(eq(prescriptionsTable.doctorAccountId, session.doctorAccountId)).orderBy(desc(prescriptionsTable.createdAt));
   return res.json(rows.map((row) => ({ ...row, completedAt: toIso(row.completedAt), createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() })));
 });
 
@@ -1146,7 +1176,8 @@ router.post("/prescriptions", requireDoctorAuth, async (req, res) => {
 
 router.get("/prescriptions/:id", requireDoctorAuth, async (req, res) => {
   const id = Number(req.params.id);
-  const [row] = await db.select().from(prescriptionsTable).where(eq(prescriptionsTable.id, id)).limit(1);
+  const session = doctorActor(req);
+  const [row] = await db.select().from(prescriptionsTable).where(ownedPrescriptionFilter(id, session.doctorAccountId)).limit(1);
   if (!row) return res.status(404).json({ error: "Prescription not found." });
   const items = await db.select().from(prescriptionItemsTable).where(eq(prescriptionItemsTable.prescriptionId, id));
   return res.json({ ...row, items, completedAt: toIso(row.completedAt), createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() });
@@ -1156,13 +1187,15 @@ router.patch("/prescriptions/:id", requireDoctorAuth, async (req, res) => {
   await ensureMedicalSeeds();
   const id = Number(req.params.id);
   const session = doctorActor(req);
+  const [existing] = await db.select({ id: prescriptionsTable.id }).from(prescriptionsTable).where(ownedPrescriptionFilter(id, session.doctorAccountId)).limit(1);
+  if (!existing) return res.status(404).json({ error: "Prescription not found." });
   const items = Array.isArray(req.body?.items) ? req.body.items : null;
   const updateData: Partial<typeof prescriptionsTable.$inferInsert> = { updatedAt: new Date() };
   const keys = ["patientName", "cid", "age", "sex", "weight", "prescriptionDateText", "symptoms", "findings", "advice", "followUp", "doctorName", "signatureText", "status"] as const;
   for (const key of keys) {
     if (req.body?.[key] !== undefined) (updateData as any)[key] = req.body[key];
   }
-  await db.update(prescriptionsTable).set(updateData).where(eq(prescriptionsTable.id, id));
+  await db.update(prescriptionsTable).set(updateData).where(ownedPrescriptionFilter(id, session.doctorAccountId));
 
   if (items) {
     const catalog = await db.select().from(medicineCatalogTable);
@@ -1193,7 +1226,9 @@ router.patch("/prescriptions/:id", requireDoctorAuth, async (req, res) => {
 router.post("/prescriptions/:id/complete", requireDoctorAuth, async (req, res) => {
   const id = Number(req.params.id);
   const session = doctorActor(req);
-  await db.update(prescriptionsTable).set({ status: "completed", completedAt: new Date(), updatedAt: new Date() }).where(eq(prescriptionsTable.id, id));
+  const [existing] = await db.select({ id: prescriptionsTable.id }).from(prescriptionsTable).where(ownedPrescriptionFilter(id, session.doctorAccountId)).limit(1);
+  if (!existing) return res.status(404).json({ error: "Prescription not found." });
+  await db.update(prescriptionsTable).set({ status: "completed", completedAt: new Date(), updatedAt: new Date() }).where(ownedPrescriptionFilter(id, session.doctorAccountId));
   await createPrescriptionEvent(id, "completed", "doctor", session.callSign, "Prescription completed");
   return res.status(204).send();
 });
