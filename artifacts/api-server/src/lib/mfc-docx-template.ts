@@ -1,8 +1,14 @@
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 import JSZip from "jszip";
 
-const TEMPLATE_PATH = path.resolve(import.meta.dirname, "../../templates/medical-fitness-certificate-template.docx");
+const TEMPLATE_FILENAME = "medical-fitness-certificate-template.docx";
+const TEMPLATE_PATH_CANDIDATES = [
+  path.resolve(import.meta.dirname, "../templates", TEMPLATE_FILENAME),
+  path.resolve(import.meta.dirname, "../../templates", TEMPLATE_FILENAME),
+  path.resolve(process.cwd(), "templates", TEMPLATE_FILENAME),
+  path.resolve(process.cwd(), "artifacts/api-server/templates", TEMPLATE_FILENAME),
+];
 const PHOTO_ENTRY_PATH = "word/media/image2.png";
 const TEXT_NODE_PATTERN = /<w:t\b[^>]*>[\s\S]*?<\/w:t>/g;
 
@@ -224,6 +230,21 @@ async function buildTemplatePortrait(url: unknown) {
     .toBuffer();
 }
 
+async function readTemplateBuffer() {
+  for (const candidate of TEMPLATE_PATH_CANDIDATES) {
+    try {
+      await access(candidate);
+      return await readFile(candidate);
+    } catch {
+      continue;
+    }
+  }
+
+  throw new Error(
+    `MFC DOCX template not found. Checked: ${TEMPLATE_PATH_CANDIDATES.join(" | ")}`,
+  );
+}
+
 function buildDocumentXml(input: Record<string, unknown>, originalXml: string) {
   const bloodLines = splitIntoSlots(input.bloodTest, 3, DEFAULT_BLOOD_LINES);
   const mriLines = splitIntoSlots(input.mriTest, 9, DEFAULT_MRI_LINES);
@@ -273,7 +294,7 @@ function buildDocumentXml(input: Record<string, unknown>, originalXml: string) {
 }
 
 export async function generateMfcTemplateDocx(input: Record<string, unknown>) {
-  const templateBuffer = await readFile(TEMPLATE_PATH);
+  const templateBuffer = await readTemplateBuffer();
   const zip = await JSZip.loadAsync(templateBuffer);
   const originalXml = await zip.file("word/document.xml")?.async("string");
   if (!originalXml) {
