@@ -205,6 +205,11 @@ export async function renderDocxMfcPreview(host: HTMLDivElement, buffer: ArrayBu
 }
 
 export async function downloadRenderedDocxPage(host: HTMLDivElement, id: number, page: 1 | 2) {
+  const blob = await renderedDocxPageToBlob(host, page);
+  downloadBlob(blob, `mfc-${id}-docx-page-${page}.png`);
+}
+
+export async function renderedDocxPageToBlob(host: HTMLDivElement, page: 1 | 2) {
   const pages = Array.from(host.querySelectorAll<HTMLElement>("section.docx-preview"));
   const target = pages[page - 1];
   if (!target) {
@@ -236,5 +241,5 @@ export async function downloadRenderedDocxPage(host: HTMLDivElement, id: number,
     throw new Error("PNG generation returned an empty file.");
   }
 
-  downloadBlob(blob, `mfc-${id}-docx-page-${page}.png`);
+  return blob;
 }

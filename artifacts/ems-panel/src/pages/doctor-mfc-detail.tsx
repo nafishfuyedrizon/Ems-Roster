@@ -4,7 +4,7 @@ import { useRoute } from "wouter";
 import { DoctorPageShell, useDoctorGuard } from "@/pages/doctor-shared";
 import { doctorFetch } from "@/lib/doctor-api";
 import { withApiPath } from "@/lib/api-base";
-import { downloadRenderedDocxPage, renderDocxMfcPreview } from "@/lib/docx-mfc-render";
+import { downloadRenderedDocxPage, renderDocxMfcPreview, renderedDocxPageToBlob } from "@/lib/docx-mfc-render";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -93,6 +93,31 @@ function dataUrlFromBlob(blob: Blob): Promise<string> {
     reader.onerror = () => reject(new Error("Could not read image data."));
     reader.readAsDataURL(blob);
   });
+}
+
+async function buildDocxDiscordImagePayload(id: number) {
+  const host = document.createElement("div");
+  host.className = "pointer-events-none fixed left-[-20000px] top-0 z-[-1]";
+  document.body.appendChild(host);
+
+  try {
+    const response = await fetch(withApiPath(`/documents/mfc/${id}/template.docx`), { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`DOCX fetch failed with status ${response.status}`);
+    }
+
+    const buffer = await response.arrayBuffer();
+    await renderDocxMfcPreview(host, buffer);
+    const page1Blob = await renderedDocxPageToBlob(host, 1);
+    const page2Blob = await renderedDocxPageToBlob(host, 2);
+
+    return {
+      page1ImageDataUrl: await dataUrlFromBlob(page1Blob),
+      page2ImageDataUrl: await dataUrlFromBlob(page2Blob),
+    };
+  } finally {
+    host.remove();
+  }
 }
 
 async function resolveInlineImageUrl(url: string): Promise<string> {
@@ -676,7 +701,8 @@ export default function DoctorMfcDetail() {
       };
       setDraft(payload);
       await doctorFetch(`/mfc-cases/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
-      await doctorFetch(`/mfc-cases/${id}/complete`, { method: "POST" });
+      const discordImages = await buildDocxDiscordImagePayload(id);
+      await doctorFetch(`/mfc-cases/${id}/complete`, { method: "POST", body: JSON.stringify(discordImages) });
       await queryClient.invalidateQueries({ queryKey: ["doctor-mfc-detail", id] });
       toast({
         title: "MFC confirmed",
@@ -696,7 +722,8 @@ export default function DoctorMfcDetail() {
   const postToDiscord = async () => {
     try {
       setIsCompleting(true);
-      await doctorFetch(`/mfc-cases/${id}/post-to-discord`, { method: "POST" });
+      const discordImages = await buildDocxDiscordImagePayload(id);
+      await doctorFetch(`/mfc-cases/${id}/post-to-discord`, { method: "POST", body: JSON.stringify(discordImages) });
       await queryClient.invalidateQueries({ queryKey: ["doctor-mfc-detail", id] });
       toast({
         title: "Posted to Discord",

@@ -464,7 +464,24 @@ function buildMfcDiscordMessageContent(row: typeof mfcCasesTable.$inferSelect, s
   return lines.join("\n");
 }
 
-async function postCompletedMfcToDiscord(row: typeof mfcCasesTable.$inferSelect, session: ReturnType<typeof doctorActor>) {
+function decodeDataUrlToBuffer(dataUrl: unknown) {
+  const raw = String(dataUrl ?? "").trim();
+  if (!raw) return null;
+  const match = raw.match(/^data:([^;,]+)?(?:;charset=[^;,]+)?;base64,(.+)$/i);
+  if (!match) {
+    throw new Error("Invalid Discord image payload.");
+  }
+  return Buffer.from(match[2], "base64");
+}
+
+async function postCompletedMfcToDiscord(
+  row: typeof mfcCasesTable.$inferSelect,
+  session: ReturnType<typeof doctorActor>,
+  clientRenderedImages?: {
+    page1ImageDataUrl?: unknown;
+    page2ImageDataUrl?: unknown;
+  },
+) {
   if (!DISCORD_BOT_TOKEN) {
     throw new Error("Discord bot token is missing on the API server.");
   }
@@ -472,8 +489,12 @@ async function postCompletedMfcToDiscord(row: typeof mfcCasesTable.$inferSelect,
     throw new Error("Discord MFC dump channel is not configured on the API server.");
   }
 
-  const page1Png = await svgToPngBuffer(renderMfcSvg(row as unknown as Record<string, unknown>, 1));
-  const page2Png = await svgToPngBuffer(renderMfcSvg(row as unknown as Record<string, unknown>, 2));
+  const page1Png =
+    decodeDataUrlToBuffer(clientRenderedImages?.page1ImageDataUrl) ??
+    (await svgToPngBuffer(renderMfcSvg(row as unknown as Record<string, unknown>, 1)));
+  const page2Png =
+    decodeDataUrlToBuffer(clientRenderedImages?.page2ImageDataUrl) ??
+    (await svgToPngBuffer(renderMfcSvg(row as unknown as Record<string, unknown>, 2)));
   const form = new FormData();
 
   form.append(
@@ -982,7 +1003,7 @@ router.post("/mfc-cases/:id/complete", requireDoctorAuth, async (req, res) => {
       } satisfies typeof mfcCasesTable.$inferSelect;
 
       try {
-        posted = await postCompletedMfcToDiscord(previewRow, session);
+        posted = await postCompletedMfcToDiscord(previewRow, session, req.body);
       } catch (discordError) {
         console.warn("[DOCTOR-MFC] Discord post failed during complete.", discordError);
         const message = discordError instanceof Error && discordError.message.trim()
@@ -1035,7 +1056,7 @@ router.post("/mfc-cases/:id/post-to-discord", requireDoctorAuth, async (req, res
         }
       | null = null;
     try {
-      posted = await postCompletedMfcToDiscord(previewRow, session);
+      posted = await postCompletedMfcToDiscord(previewRow, session, req.body);
     } catch (discordError) {
       console.warn("[DOCTOR-MFC] Discord post failed during retry.", discordError);
       const message = discordError instanceof Error && discordError.message.trim()
