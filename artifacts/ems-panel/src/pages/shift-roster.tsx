@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, Search, Moon, Star, Cloud, Flame, Clock, Trophy, TrendingUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { PersonnelDossierDialog } from "@/components/personnel-dossier-dialog";
+import { PersonnelDossierDialogLegacy } from "@/components/personnel-dossier-dialog-legacy";
 import { API_BASE } from "@/lib/api-base";
 
 const SHIFT_TABS = [
@@ -508,7 +508,7 @@ export default function ShiftRoster() {
 
       </div>
 
-      <PersonnelDossierDialog
+      <PersonnelDossierDialogLegacy
         memberId={dossierMemberId}
         onClose={() => setDossierMemberId(null)}
       />

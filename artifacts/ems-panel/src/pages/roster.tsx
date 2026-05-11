@@ -9,7 +9,7 @@ import { AlertCircle, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { PersonnelDossierDialog } from "@/components/personnel-dossier-dialog";
+import { PersonnelDossierDialogLegacy } from "@/components/personnel-dossier-dialog-legacy";
 
 const REFRESH_INTERVAL = 1;
 
@@ -189,7 +189,7 @@ export default function Roster() {
         </Card>
       </div>
 
-      <PersonnelDossierDialog
+      <PersonnelDossierDialogLegacy
         memberId={dossierMemberId}
         onClose={() => setDossierMemberId(null)}
       />
