@@ -484,9 +484,9 @@ async function postCompletedMfcToDiscord(row: typeof mfcCasesTable.$inferSelect,
       content: buildMfcDiscordMessageContent(row, session),
     }),
   );
-  // Post the compact summary page first so Discord previews match the DOCX browsing order users expect.
-  form.append("files[0]", new Blob([page2Png], { type: "image/png" }), `mfc-${row.id}-page-2.png`);
-  form.append("files[1]", new Blob([page1Png], { type: "image/png" }), `mfc-${row.id}-page-1.png`);
+  // Use stable preview filenames so Discord keeps the intended left-to-right order.
+  form.append("files[0]", new Blob([page2Png], { type: "image/png" }), `mfc-${row.id}-preview-1.png`);
+  form.append("files[1]", new Blob([page1Png], { type: "image/png" }), `mfc-${row.id}-preview-2.png`);
   form.append("files[2]", new Blob([templateDocx], {
     type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   }), `mfc-${row.id}-template.docx`);
