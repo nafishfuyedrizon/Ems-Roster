@@ -511,6 +511,87 @@ async function postCompletedMfcToDiscord(row: typeof mfcCasesTable.$inferSelect,
   };
 }
 
+function errorDetails(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const causeMessage =
+    typeof error === "object" &&
+    error !== null &&
+    "cause" in error &&
+    (error as { cause?: unknown }).cause instanceof Error
+      ? (error as { cause: Error }).cause.message
+      : "";
+  return [message, causeMessage].filter(Boolean).join(" | ");
+}
+
+function isMissingMfcDiscordColumnError(error: unknown) {
+  const details = errorDetails(error);
+  return /ER_BAD_FIELD_ERROR|Unknown column|source_author_name|posted_at|discord_channel_id/i.test(details);
+}
+
+async function persistCompletedMfcState(
+  id: number,
+  completedAt: Date,
+  session: ReturnType<typeof doctorActor>,
+  posted:
+    | {
+        discordMessageId: string | null;
+        discordChannelId: string;
+      }
+    | null,
+) {
+  const attempts: Array<Partial<typeof mfcCasesTable.$inferInsert>> = [
+    {
+      status: "completed",
+      completedAt,
+      updatedAt: completedAt,
+      ...(posted?.discordMessageId
+        ? {
+            discordMessageId: posted.discordMessageId,
+            discordChannelId: posted.discordChannelId,
+            sourceAuthorName: session.name,
+            postedAt: completedAt,
+          }
+        : {}),
+    },
+    {
+      status: "completed",
+      completedAt,
+      updatedAt: completedAt,
+      ...(posted?.discordMessageId
+        ? {
+            discordMessageId: posted.discordMessageId,
+            discordChannelId: posted.discordChannelId,
+          }
+        : {}),
+    },
+    {
+      status: "completed",
+      completedAt,
+      updatedAt: completedAt,
+      ...(posted?.discordMessageId
+        ? {
+            discordMessageId: posted.discordMessageId,
+          }
+        : {}),
+    },
+  ];
+
+  let lastError: unknown = null;
+  for (const attempt of attempts) {
+    try {
+      await db.update(mfcCasesTable).set(attempt).where(eq(mfcCasesTable.id, id));
+      return;
+    } catch (error) {
+      lastError = error;
+      if (!isMissingMfcDiscordColumnError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  if (lastError) throw lastError;
+}
+
 function isMissingPrintVersionTableError(error: unknown) {
   const code = typeof error === "object" && error !== null ? (error as { code?: string }).code : undefined;
   const message = error instanceof Error ? error.message : String(error ?? "");
@@ -916,19 +997,7 @@ router.post("/mfc-cases/:id/complete", requireDoctorAuth, async (req, res) => {
       }
     }
 
-    await db.update(mfcCasesTable).set({
-      status: "completed",
-      completedAt,
-      updatedAt: completedAt,
-      ...(posted?.discordMessageId
-        ? {
-            discordMessageId: posted.discordMessageId,
-            discordChannelId: posted.discordChannelId,
-            sourceAuthorName: session.name,
-            postedAt: completedAt,
-          }
-        : {}),
-    }).where(eq(mfcCasesTable.id, id));
+    await persistCompletedMfcState(id, completedAt, session, posted);
 
     try {
       await createMfcEvent(id, "completed", "doctor", session.callSign, "MFC case completed");
@@ -980,18 +1049,12 @@ router.post("/mfc-cases/:id/post-to-discord", requireDoctorAuth, async (req, res
       return res.status(502).json({ error: message });
     }
 
-    await db.update(mfcCasesTable).set({
-      updatedAt: postedAt,
-      ...(existing.status === "completed" ? {} : { status: "completed", completedAt: postedAt }),
-      ...(posted?.discordMessageId
-        ? {
-            discordMessageId: posted.discordMessageId,
-            discordChannelId: posted.discordChannelId,
-            sourceAuthorName: session.name,
-            postedAt,
-          }
-        : {}),
-    }).where(eq(mfcCasesTable.id, id));
+    await persistCompletedMfcState(
+      id,
+      existing.completedAt ?? postedAt,
+      session,
+      posted,
+    );
 
     return res.status(204).send();
   } catch (error) {
