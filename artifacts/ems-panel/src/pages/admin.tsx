@@ -26,7 +26,7 @@ function DiscordIcon({ className }: { className?: string }) {
 }
 
 export default function AdminPanel() {
-  const { isAuthenticated, adminIdentity, adminRole, loginWithMasterPassword, loginWithDiscord, logout } = useAuth();
+  const { isAuthenticated, adminIdentity, adminRole, authSource, loginWithMasterPassword, loginWithDiscord, logout } = useAuth();
   const [masterKey, setMasterKey] = useState("");
   const [error, setError] = useState("");
   const [discordLoading, setDiscordLoading] = useState(false);
@@ -36,6 +36,7 @@ export default function AdminPanel() {
   const isFtpEms = adminRole === "ftp-ems";
   const isFtbQC = adminRole === "ftb-qc";
   const isFull = !isHighCommand && !isFtpEms && !isFtbQC;
+  const isMasterKeySession = authSource === "master-key";
 
   useAccessValidator({
     isAuthenticated,
@@ -196,7 +197,7 @@ export default function AdminPanel() {
                     Ex EMS
                   </TabsTrigger>
                 )}
-                {(isFull || isHighCommand) && (
+                {isMasterKeySession && (
                   <TabsTrigger value="doctor-accounts" className="data-[state=active]:bg-cyan-500/10 data-[state=active]:text-cyan-300 font-mono uppercase text-xs h-9">
                     Doctor Accounts
                   </TabsTrigger>
@@ -245,7 +246,7 @@ export default function AdminPanel() {
                   <AdminExEms />
                 </TabsContent>
               )}
-              {(isFull || isHighCommand) && (
+              {isMasterKeySession && (
                 <TabsContent value="doctor-accounts" className="mt-0 outline-none">
                   <AdminDoctorAccounts />
                 </TabsContent>

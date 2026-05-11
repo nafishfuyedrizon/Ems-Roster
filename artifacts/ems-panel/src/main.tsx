@@ -7,10 +7,12 @@ const _fetch = window.fetch.bind(window);
 window.fetch = (input, init = {}) => {
   const identity = localStorage.getItem("admin_identity");
   const role = localStorage.getItem("admin_role");
+  const authSource = localStorage.getItem("admin_auth_source");
   if (identity) {
     const headers = new Headers(init.headers);
     headers.set("X-Admin-Identity", identity);
     if (role) headers.set("X-Admin-Role", role);
+    if (authSource) headers.set("X-Admin-Auth-Source", authSource);
     init.headers = headers;
   }
   return _fetch(input, init);

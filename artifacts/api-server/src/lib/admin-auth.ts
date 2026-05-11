@@ -9,6 +9,13 @@ function headerValue(req: Request, name: string): string {
   return Array.isArray(value) ? (value[0] ?? "").trim() : (value ?? "").trim();
 }
 
+export function isMasterKeyAdminRequest(req: Request): boolean {
+  const identity = headerValue(req, "x-admin-identity");
+  const claimedRole = headerValue(req, "x-admin-role");
+  const authSource = headerValue(req, "x-admin-auth-source");
+  return identity === "Master Key" && claimedRole === "full" && authSource === "master-key";
+}
+
 function roleFromFlags(role: {
   isSuperAdmin?: boolean | null;
   isSeniorStaff?: boolean | null;
@@ -75,3 +82,21 @@ export function requireAdminRole(allowed: AdminRole[]): RequestHandler {
     }
   };
 }
+
+export const requireMasterKeyAdmin: RequestHandler = async (req, res, next) => {
+  try {
+    const role = await resolveAdminRole(req);
+    if (!role) {
+      return res.status(401).json({ error: "Admin authentication required" });
+    }
+    if (!isMasterKeyAdminRequest(req)) {
+      return res.status(403).json({ error: "Master key access required" });
+    }
+
+    (req as any).adminRole = role;
+    next();
+  } catch (err) {
+    console.error("[ADMIN-AUTH] Error:", err);
+    return res.status(500).json({ error: "Failed to validate admin permissions" });
+  }
+};

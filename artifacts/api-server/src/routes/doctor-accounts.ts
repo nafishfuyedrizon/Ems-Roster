@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db, doctorAccountsTable, membersTable } from "@workspace/db";
-import { requireAdminRole } from "../lib/admin-auth";
+import { requireMasterKeyAdmin } from "../lib/admin-auth";
 import { hashPassword } from "../lib/doctor-auth";
 
 const router = Router();
@@ -28,7 +28,7 @@ function isDuplicateEntryError(error: unknown) {
   return /ER_DUP_ENTRY|1062|Duplicate entry/i.test(values);
 }
 
-router.get("/doctor-accounts", requireAdminRole(["full", "high-command"]), async (_req, res) => {
+router.get("/doctor-accounts", requireMasterKeyAdmin, async (_req, res) => {
   const rows = await db
     .select({
       id: doctorAccountsTable.id,
@@ -54,7 +54,7 @@ router.get("/doctor-accounts", requireAdminRole(["full", "high-command"]), async
   })));
 });
 
-router.post("/doctor-accounts", requireAdminRole(["full", "high-command"]), async (req, res) => {
+router.post("/doctor-accounts", requireMasterKeyAdmin, async (req, res) => {
   const memberId = Number(req.body?.memberId);
   const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
   const password = typeof req.body?.password === "string" ? req.body.password : "";
@@ -110,7 +110,7 @@ router.post("/doctor-accounts", requireAdminRole(["full", "high-command"]), asyn
   }
 });
 
-router.patch("/doctor-accounts/:id", requireAdminRole(["full", "high-command"]), async (req, res) => {
+router.patch("/doctor-accounts/:id", requireMasterKeyAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!id) return res.status(400).json({ error: "Invalid account id." });
 
@@ -129,7 +129,7 @@ router.patch("/doctor-accounts/:id", requireAdminRole(["full", "high-command"]),
   return res.status(204).send();
 });
 
-router.post("/doctor-accounts/:id/reset-password", requireAdminRole(["full", "high-command"]), async (req, res) => {
+router.post("/doctor-accounts/:id/reset-password", requireMasterKeyAdmin, async (req, res) => {
   const id = Number(req.params.id);
   const password = typeof req.body?.password === "string" ? req.body.password : "";
   if (!id || !password) {
@@ -143,6 +143,16 @@ router.post("/doctor-accounts/:id/reset-password", requireAdminRole(["full", "hi
   }).where(eq(doctorAccountsTable.id, id));
 
   return res.json({ success: true, password });
+});
+
+router.delete("/doctor-accounts/:id", requireMasterKeyAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) {
+    return res.status(400).json({ error: "Invalid account id." });
+  }
+
+  await db.delete(doctorAccountsTable).where(eq(doctorAccountsTable.id, id));
+  return res.status(204).send();
 });
 
 export default router;

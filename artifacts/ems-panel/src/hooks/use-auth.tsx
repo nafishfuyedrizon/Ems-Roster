@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { API_BASE } from "@/lib/api-base";
 
 export type AdminRole = "full" | "high-command" | "ftp-ems" | "ftb-qc" | null;
+export type AdminAuthSource = "master-key" | "discord" | null;
 
 export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -15,16 +16,22 @@ export function useAuth() {
   const [adminRole, setAdminRole] = useState<AdminRole>(() => {
     return (localStorage.getItem("admin_role") as AdminRole) ?? null;
   });
+  const [authSource, setAuthSource] = useState<AdminAuthSource>(() => {
+    return (localStorage.getItem("admin_auth_source") as AdminAuthSource) ?? null;
+  });
 
-  const setAuth = (identity: string | null, role: AdminRole) => {
+  const setAuth = (identity: string | null, role: AdminRole, source: AdminAuthSource) => {
     localStorage.setItem("admin_auth", "true");
     if (identity) localStorage.setItem("admin_identity", identity);
     else localStorage.removeItem("admin_identity");
     if (role) localStorage.setItem("admin_role", role);
     else localStorage.removeItem("admin_role");
+    if (source) localStorage.setItem("admin_auth_source", source);
+    else localStorage.removeItem("admin_auth_source");
     setIsAuthenticated(true);
     setAdminIdentity(identity);
     setAdminRole(role);
+    setAuthSource(source);
   };
 
   const loginWithMasterPassword = async (input: string): Promise<{ success: boolean; error?: string }> => {
@@ -40,7 +47,7 @@ export function useAuth() {
         return { success: false, error: result.error ?? "Invalid master key." };
       }
 
-      setAuth(result.identity ?? "Master Key", result.role as AdminRole);
+      setAuth(result.identity ?? "Master Key", result.role as AdminRole, "master-key");
       return { success: true };
     } catch {
       return { success: false, error: "Master key verification failed." };
@@ -77,7 +84,7 @@ export function useAuth() {
 
         const { success, role, identity, error } = event.data;
         if (success && role) {
-          setAuth(identity ?? null, role as AdminRole);
+          setAuth(identity ?? null, role as AdminRole, "discord");
           resolve({ success: true });
         } else {
           resolve({ success: false, error: error ?? "Discord authentication failed." });
@@ -92,10 +99,12 @@ export function useAuth() {
     localStorage.removeItem("admin_auth");
     localStorage.removeItem("admin_identity");
     localStorage.removeItem("admin_role");
+    localStorage.removeItem("admin_auth_source");
     setIsAuthenticated(false);
     setAdminIdentity(null);
     setAdminRole(null);
+    setAuthSource(null);
   };
 
-  return { isAuthenticated, adminIdentity, adminRole, loginWithMasterPassword, loginWithDiscord, logout };
+  return { isAuthenticated, adminIdentity, adminRole, authSource, loginWithMasterPassword, loginWithDiscord, logout };
 }

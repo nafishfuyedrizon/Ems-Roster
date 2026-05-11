@@ -78,6 +78,19 @@ export default function AdminDoctorAccounts() {
     }
   };
 
+  const deleteAccount = async (id: number) => {
+    try {
+      const response = await fetch(`${API_BASE}/doctor-accounts/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error(await readApiError(response, "Failed to delete account"));
+      toast({ title: "Doctor account deleted" });
+      await reload();
+    } catch (error) {
+      toast({ title: "Failed to delete account", description: error instanceof Error ? error.message : undefined, variant: "destructive" });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card className="border-border/50 bg-card/50">
@@ -104,7 +117,7 @@ export default function AdminDoctorAccounts() {
       <div className="grid gap-4">
         {(data ?? []).map((account) => (
           <Card key={account.id} className="border-border/50 bg-card/50">
-            <CardContent className="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_180px_180px] md:items-center">
+            <CardContent className="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_180px_220px_120px] md:items-center">
               <div>
                 <p className="font-semibold">{account.callSign} · {account.name}</p>
                 <p className="text-xs text-muted-foreground">@{account.username} · {account.rank}</p>
@@ -116,6 +129,9 @@ export default function AdminDoctorAccounts() {
                 <Input value={resetPasswords[account.id] ?? ""} onChange={(event) => setResetPasswords((prev) => ({ ...prev, [account.id]: event.target.value }))} type="password" placeholder="new password" />
                 <Button variant="outline" onClick={() => void resetPassword(account.id)}>Reset</Button>
               </div>
+              <Button variant="destructive" onClick={() => void deleteAccount(account.id)}>
+                Delete
+              </Button>
             </CardContent>
           </Card>
         ))}
