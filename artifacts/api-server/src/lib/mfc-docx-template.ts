@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import JSZip from "jszip";
 
-const TEMPLATE_PATH = path.resolve(import.meta.dirname, "../templates/medical-fitness-certificate-template.docx");
+const TEMPLATE_PATH = path.resolve(import.meta.dirname, "../../templates/medical-fitness-certificate-template.docx");
 const PHOTO_ENTRY_PATH = "word/media/image2.png";
 const TEXT_NODE_PATTERN = /<w:t\b[^>]*>[\s\S]*?<\/w:t>/g;
 
