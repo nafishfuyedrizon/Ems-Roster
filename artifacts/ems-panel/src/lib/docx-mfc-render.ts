@@ -224,7 +224,7 @@ export async function renderedDocxPageToBlob(host: HTMLDivElement, page: 1 | 2) 
   const referencePage = pages[0] ?? target;
   const pageRect = referencePage.getBoundingClientRect();
   const exportWidth = Math.ceil(pageRect.width);
-  const exportHeight = page === 1 ? Math.ceil(pageRect.height) : measurePageContentHeight(target);
+  const exportHeight = measurePageContentHeight(target);
   const blob = await toBlob(target, {
     cacheBust: true,
     backgroundColor: "#ffffff",
