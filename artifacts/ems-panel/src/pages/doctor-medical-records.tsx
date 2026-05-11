@@ -53,9 +53,20 @@ export default function DoctorMedicalRecords() {
                         CID: {record.cid || "N/A"} · MFC Reason: {record.mfcReason || "Medical Fitness Certificate"}
                       </p>
                     </div>
-                    <Badge className="border-emerald-400/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/10">
-                      Confirmed MFC
-                    </Badge>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <Badge className="border-emerald-400/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/10">
+                        Confirmed MFC
+                      </Badge>
+                      {record.discordMessageId ? (
+                        <Badge className="border-cyan-400/30 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/10">
+                          Discord Posted
+                        </Badge>
+                      ) : (
+                        <Badge className="border-amber-400/30 bg-amber-500/10 text-amber-200 hover:bg-amber-500/10">
+                          Discord Not Posted
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="flex items-center justify-between gap-4">
@@ -63,6 +74,7 @@ export default function DoctorMedicalRecords() {
                     <p>Date: {record.examDateText || "N/A"}</p>
                     <p>Officer: {record.officerName || "N/A"}</p>
                     <p>Status: {record.status}</p>
+                    <p>Discord: {record.discordMessageId ? "Posted" : "Not posted yet"}</p>
                   </div>
                   <Link href={`/doctor/mfc/${record.id}`} className="text-primary underline">
                     Open Certificate
