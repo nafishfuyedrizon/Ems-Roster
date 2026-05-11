@@ -112,6 +112,31 @@ function downloadBlob(blob: Blob, filename: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function imageUrlToDataUrl(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    image.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = image.naturalWidth || image.width;
+        canvas.height = image.naturalHeight || image.height;
+        const context = canvas.getContext("2d");
+        if (!context) {
+          reject(new Error("Could not prepare the applicant photo for DOCX export."));
+          return;
+        }
+        context.drawImage(image, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error("Could not inline the applicant photo."));
+      }
+    };
+    image.onerror = () => reject(new Error("Could not load the applicant photo for DOCX export."));
+    image.src = url;
+  });
+}
+
 async function resolveInlineImageUrl(url: string): Promise<string> {
   const trimmed = url.trim();
   if (!trimmed) return "";
@@ -648,14 +673,7 @@ export default function DoctorMfcDetail() {
       throw new Error("This MFC case is not available yet.");
     }
 
-    const response = await fetch(withApiPath(`/documents/mfc/${id}/template.docx`), {
-      credentials: "include",
-    });
-    if (!response.ok) {
-      throw new Error(`DOCX fetch failed with status ${response.status}`);
-    }
-
-    const buffer = await response.arrayBuffer();
+    const buffer = await fetchDocxTemplateBuffer();
     const host = document.createElement("div");
     host.style.position = "fixed";
     host.style.left = "-10000px";
@@ -698,6 +716,43 @@ export default function DoctorMfcDetail() {
         });
     }
     return docxPayloadPromiseRef.current;
+  };
+
+  const buildDocxTemplatePayload = async () => {
+    const payload = buildDraftPayload();
+    const photoCandidate = (resolvedPhotoUrl || valueOf(payload, "sourceAttachmentUrl")).trim();
+    if (!photoCandidate) return payload;
+    if (photoCandidate.startsWith("data:")) {
+      return {
+        ...payload,
+        sourceAttachmentUrl: photoCandidate,
+      };
+    }
+
+    try {
+      return {
+        ...payload,
+        sourceAttachmentUrl: await imageUrlToDataUrl(photoCandidate),
+      };
+    } catch {
+      return payload;
+    }
+  };
+
+  const fetchDocxTemplateBuffer = async () => {
+    const templatePayload = await buildDocxTemplatePayload();
+    const response = await fetch(withApiPath(`/documents/mfc/${id}/template.docx`), {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(templatePayload),
+    });
+    if (!response.ok) {
+      throw new Error(`DOCX fetch failed with status ${response.status}`);
+    }
+    return response.arrayBuffer();
   };
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {

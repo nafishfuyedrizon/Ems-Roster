@@ -1365,6 +1365,27 @@ router.get("/documents/:type/:id/template.docx", async (req, res) => {
   return res.send(docx);
 });
 
+router.post("/documents/:type/:id/template.docx", requireDoctorAuth, async (req, res) => {
+  const documentType = String(req.params.type);
+  const documentId = Number(req.params.id);
+  if (documentType !== "mfc") return res.status(404).send("Not found");
+  const document = await loadDocumentPayload(documentType, documentId);
+  if (!document) return res.status(404).send("Not found");
+
+  const docxInput = {
+    ...(document.row as Record<string, unknown>),
+    ...(req.body && typeof req.body === "object" ? req.body : {}),
+  };
+
+  const docx = await generateMfcTemplateDocx(docxInput);
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+  res.setHeader("Cache-Control", "no-store");
+  if (req.query.download !== undefined) {
+    res.setHeader("Content-Disposition", `attachment; filename="${documentType}-${documentId}-template.docx"`);
+  }
+  return res.send(docx);
+});
+
 router.get("/documents/:type/:id/page/:page.png", async (req, res) => {
   const documentType = String(req.params.type);
   const documentId = Number(req.params.id);
