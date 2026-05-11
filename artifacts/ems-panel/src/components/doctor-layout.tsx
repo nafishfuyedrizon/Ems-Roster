@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { CalendarDays, ChevronDown, ClipboardList, FileText, HeartPulse, Home, LogOut, Pill, ShieldCheck, Sparkles, UserRound, UserRoundSearch, WalletCards } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -88,11 +87,6 @@ export function DoctorLayout({ children }: { children: React.ReactNode }) {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            ) : null}
-            {doctor ? (
-              <Button variant="outline" onClick={() => void logout()} className="font-mono text-xs">
-                Logout
-              </Button>
             ) : null}
           </div>
         </div>

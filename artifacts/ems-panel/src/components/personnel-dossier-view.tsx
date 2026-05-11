@@ -29,6 +29,7 @@ type MemberLike = {
   licenseKey?: string | null;
   notes?: string | null;
   cid?: string | number | null;
+  phone?: string | null;
   phoneNumber?: string | null;
   timezone?: string | null;
   strike?: string | null;
@@ -80,6 +81,7 @@ export function PersonnelDossierView({
 }: PersonnelDossierViewProps) {
   const rankStyle = member?.rank ? RANK_COLORS[member.rank] : null;
   const weeks = stats?.weeks ?? [];
+  const hasTrackedDuty = weeks.some((week) => week.totalMinutes > 0 || week.fullMinutes > 0 || week.eveningMinutes > 0 || week.nightMinutes > 0 || week.midnightMinutes > 0);
   const shellGap = compact ? "gap-4" : "gap-6";
   const sidePad = compact ? "px-4 pb-4 pt-4" : "px-5 pb-5 pt-5";
 
@@ -105,7 +107,7 @@ export function PersonnelDossierView({
                 <ProfileStat icon={<Fingerprint className="h-4 w-4" />} label="CID" value={member?.cid || "Unknown"} />
                 <ProfileStat icon={<Calendar className="h-4 w-4" />} label="Joined" value={member?.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : "Unknown"} />
                 <ProfileStat icon={<TimerReset className="h-4 w-4" />} label="Status" value={member?.status || "Unknown"} statusClass={STATUS_COLORS[member?.status || ""]} />
-                <ProfileStat icon={<Phone className="h-4 w-4" />} label="Phone" value={member?.phoneNumber || "No phone"} />
+                <ProfileStat icon={<Phone className="h-4 w-4" />} label="Phone" value={member?.phone || member?.phoneNumber || "No phone"} />
                 <ProfileStat icon={<MapPin className="h-4 w-4" />} label="Zone" value={member?.timezone || "ASIA"} />
                 <ProfileStat icon={<Siren className="h-4 w-4" />} label="Strikes" value={normalizeStrike(member?.strike)} />
               </>
@@ -208,7 +210,7 @@ export function PersonnelDossierView({
             </div>
 
             <div className="grid gap-3 md:grid-cols-4">
-              <HeroMetric label="Total Tracked" value={statsLoading ? "..." : formatMinutes(stats?.totalMinutes || 0)} accent="text-cyan-300" />
+              <HeroMetric label="Total Tracked" value={statsLoading ? "..." : hasTrackedDuty ? formatMinutes(stats?.totalMinutes || 0) : "No Logs"} accent="text-cyan-300" />
               <HeroMetric label="Rank" value={memberLoading ? "..." : member?.rank || "Unknown"} accent={rankStyle?.text || "text-emerald-300"} />
               <HeroMetric label="Service State" value={memberLoading ? "..." : member?.status || "Unknown"} accent="text-lime-300" />
               <HeroMetric label="Notes" value={memberLoading ? "..." : member?.notes ? "Filed" : "Clear"} accent="text-amber-300" />
@@ -230,7 +232,7 @@ export function PersonnelDossierView({
               {!statsLoading && !statsError ? (
                 <div className="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-2 text-right shadow-[0_10px_30px_rgba(0,229,255,0.08)]">
                   <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-primary/80">Tracked Hours</div>
-                  <div className="text-lg font-bold text-primary">{formatMinutes(stats?.totalMinutes || 0)}</div>
+                  <div className="text-lg font-bold text-primary">{hasTrackedDuty ? formatMinutes(stats?.totalMinutes || 0) : "SYNC PENDING"}</div>
                 </div>
               ) : null}
             </div>
@@ -247,9 +249,9 @@ export function PersonnelDossierView({
                 <Skeleton className="h-16 w-full rounded-2xl" />
                 <Skeleton className="h-16 w-full rounded-2xl" />
               </div>
-            ) : weeks.length === 0 ? (
+            ) : weeks.length === 0 || !hasTrackedDuty ? (
               <div className="flex min-h-[220px] items-center justify-center rounded-3xl border border-dashed border-border/60 bg-background/30 px-4 text-center text-sm font-mono uppercase tracking-[0.2em] text-muted-foreground">
-                No duty logs recorded for this officer
+                No duty logs synced yet for this officer
               </div>
             ) : (
               <div className="min-w-[860px] space-y-3">
