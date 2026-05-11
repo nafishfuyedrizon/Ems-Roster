@@ -475,6 +475,7 @@ async function postCompletedMfcToDiscord(row: typeof mfcCasesTable.$inferSelect,
 
   const page1Png = await svgToPngBuffer(renderMfcSvg(row as unknown as Record<string, unknown>, 1));
   const page2Png = await svgToPngBuffer(renderMfcSvg(row as unknown as Record<string, unknown>, 2));
+  const templateDocx = await generateMfcTemplateDocx(row as unknown as Record<string, unknown>);
   const form = new FormData();
 
   form.append(
@@ -483,8 +484,12 @@ async function postCompletedMfcToDiscord(row: typeof mfcCasesTable.$inferSelect,
       content: buildMfcDiscordMessageContent(row, session),
     }),
   );
-  form.append("files[0]", new Blob([page1Png], { type: "image/png" }), `mfc-${row.id}-page-1.png`);
-  form.append("files[1]", new Blob([page2Png], { type: "image/png" }), `mfc-${row.id}-page-2.png`);
+  // Post the compact summary page first so Discord previews match the DOCX browsing order users expect.
+  form.append("files[0]", new Blob([page2Png], { type: "image/png" }), `mfc-${row.id}-page-2.png`);
+  form.append("files[1]", new Blob([page1Png], { type: "image/png" }), `mfc-${row.id}-page-1.png`);
+  form.append("files[2]", new Blob([templateDocx], {
+    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  }), `mfc-${row.id}-template.docx`);
 
   const response = await fetch(`https://discord.com/api/v10/channels/${DISCORD_MFC_DUMP_CHANNEL_ID}/messages`, {
     method: "POST",
