@@ -4,7 +4,7 @@ import { useRoute } from "wouter";
 import { DoctorPageShell, useDoctorGuard } from "@/pages/doctor-shared";
 import { doctorFetch } from "@/lib/doctor-api";
 import { withApiPath } from "@/lib/api-base";
-import { downloadRenderedDocxPage, renderDocxMfcPreview, renderedDocxPageToBlob } from "@/lib/docx-mfc-render";
+import { renderDocxMfcPreview, renderedDocxPageToBlob } from "@/lib/docx-mfc-render";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,6 +43,12 @@ const DEFAULT_DESCRIPTION =
   "I have examined and certified that he is free from deafness or any other infirmity, mental or physical, likely to interfere with the efficiency of his work and found to possess good health.";
 
 type MfcDraft = Record<string, string>;
+type DocxPreviewPayload = {
+  page1Blob: Blob;
+  page2Blob: Blob;
+  page1ImageDataUrl: string;
+  page2ImageDataUrl: string;
+};
 
 function valueOf(draft: MfcDraft, field: string, fallback = ""): string {
   return draft[field] ?? fallback;
@@ -569,6 +575,8 @@ export default function DoctorMfcDetail() {
   const { doctor } = useDoctorGuard();
   const { toast } = useToast();
   const photoUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const docxPayloadCacheRef = useRef<DocxPreviewPayload | null>(null);
+  const docxPayloadPromiseRef = useRef<Promise<DocxPreviewPayload> | null>(null);
   const { data } = useQuery<any>({
     queryKey: ["doctor-mfc-detail", id],
     queryFn: () => doctorFetch(`/mfc-cases/${id}`),
@@ -626,11 +634,16 @@ export default function DoctorMfcDetail() {
     };
   }, [draft.sourceAttachmentUrl]);
 
+  useEffect(() => {
+    docxPayloadCacheRef.current = null;
+    docxPayloadPromiseRef.current = null;
+  }, [draft]);
+
   const setField = (field: string, value: string) => {
     setDraft((prev) => ({ ...prev, [field]: value }));
   };
 
-  const buildDocxPreviewImagePayload = async () => {
+  const createDocxPreviewImagePayload = async () => {
     if (!Number.isFinite(id)) {
       throw new Error("This MFC case is not available yet.");
     }
@@ -668,6 +681,23 @@ export default function DoctorMfcDetail() {
     } finally {
       host.remove();
     }
+  };
+
+  const buildDocxPreviewImagePayload = async () => {
+    if (docxPayloadCacheRef.current) {
+      return docxPayloadCacheRef.current;
+    }
+    if (!docxPayloadPromiseRef.current) {
+      docxPayloadPromiseRef.current = createDocxPreviewImagePayload()
+        .then((payload) => {
+          docxPayloadCacheRef.current = payload;
+          return payload;
+        })
+        .finally(() => {
+          docxPayloadPromiseRef.current = null;
+        });
+    }
+    return docxPayloadPromiseRef.current;
   };
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -774,27 +804,8 @@ export default function DoctorMfcDetail() {
       const payload = buildDraftPayload();
       setDraft(payload);
       await doctorFetch(`/mfc-cases/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
-      const response = await fetch(withApiPath(`/documents/mfc/${id}/template.docx`), {
-        credentials: "include",
-      });
-      if (!response.ok) {
-        throw new Error(`DOCX fetch failed with status ${response.status}`);
-      }
-      const buffer = await response.arrayBuffer();
-      const host = document.createElement("div");
-      host.style.position = "fixed";
-      host.style.left = "-10000px";
-      host.style.top = "0";
-      host.style.width = "1200px";
-      host.style.pointerEvents = "none";
-      host.style.opacity = "0";
-      document.body.appendChild(host);
-      try {
-        await renderDocxMfcPreview(host, buffer);
-        await downloadRenderedDocxPage(host, id, page);
-      } finally {
-        host.remove();
-      }
+      const previewPayload = await buildDocxPreviewImagePayload();
+      downloadBlob(page === 1 ? previewPayload.page1Blob : previewPayload.page2Blob, `mfc-${id}-docx-page-${page}.png`);
     } catch (error) {
       toast({
         title: `Failed to download page ${page}`,
