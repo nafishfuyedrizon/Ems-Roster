@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
+import { toBlob } from "html-to-image";
 import { DoctorPageShell, useDoctorGuard } from "@/pages/doctor-shared";
 import { doctorFetch } from "@/lib/doctor-api";
-import { withApiPath } from "@/lib/api-base";
-import { downloadRenderedDocxPage, renderDocxMfcPreview, renderedDocxPageToBlob } from "@/lib/docx-mfc-render";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -95,29 +94,15 @@ function dataUrlFromBlob(blob: Blob): Promise<string> {
   });
 }
 
-async function buildDocxDiscordImagePayload(id: number) {
-  const host = document.createElement("div");
-  host.className = "pointer-events-none fixed left-[-20000px] top-0 z-[-1]";
-  document.body.appendChild(host);
-
-  try {
-    const response = await fetch(withApiPath(`/documents/mfc/${id}/template.docx`), { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error(`DOCX fetch failed with status ${response.status}`);
-    }
-
-    const buffer = await response.arrayBuffer();
-    await renderDocxMfcPreview(host, buffer);
-    const page1Blob = await renderedDocxPageToBlob(host, 1);
-    const page2Blob = await renderedDocxPageToBlob(host, 2);
-
-    return {
-      page1ImageDataUrl: await dataUrlFromBlob(page1Blob),
-      page2ImageDataUrl: await dataUrlFromBlob(page2Blob),
-    };
-  } finally {
-    host.remove();
-  }
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 async function resolveInlineImageUrl(url: string): Promise<string> {
@@ -583,6 +568,8 @@ export default function DoctorMfcDetail() {
   const { doctor } = useDoctorGuard();
   const { toast } = useToast();
   const photoUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const pageOnePreviewRef = useRef<HTMLElement | null>(null);
+  const pageTwoPreviewRef = useRef<HTMLElement | null>(null);
   const { data } = useQuery<any>({
     queryKey: ["doctor-mfc-detail", id],
     queryFn: () => doctorFetch(`/mfc-cases/${id}`),
@@ -644,6 +631,51 @@ export default function DoctorMfcDetail() {
     setDraft((prev) => ({ ...prev, [field]: value }));
   };
 
+  const capturePreviewBlob = async (element: HTMLElement, page: 1 | 2) => {
+    const rect = element.getBoundingClientRect();
+    const blob = await toBlob(element, {
+      cacheBust: true,
+      backgroundColor: "#ffffff",
+      pixelRatio: 2.5,
+      width: Math.ceil(rect.width),
+      height: Math.ceil(rect.height),
+      canvasWidth: Math.ceil(rect.width),
+      canvasHeight: Math.ceil(rect.height),
+      skipFonts: false,
+      style: {
+        boxShadow: "none",
+        margin: "0",
+        width: `${Math.ceil(rect.width)}px`,
+        height: `${Math.ceil(rect.height)}px`,
+      },
+    });
+
+    if (!blob) {
+      throw new Error(`Could not capture preview page ${page}.`);
+    }
+    return blob;
+  };
+
+  const buildVisiblePreviewImagePayload = async () => {
+    const pageOne = pageOnePreviewRef.current;
+    const pageTwo = pageTwoPreviewRef.current;
+    if (!pageOne || !pageTwo) {
+      throw new Error("Preview pages are not ready yet.");
+    }
+
+    const [page1Blob, page2Blob] = await Promise.all([
+      capturePreviewBlob(pageOne, 1),
+      capturePreviewBlob(pageTwo, 2),
+    ]);
+
+    return {
+      page1Blob,
+      page2Blob,
+      page1ImageDataUrl: await dataUrlFromBlob(page1Blob),
+      page2ImageDataUrl: await dataUrlFromBlob(page2Blob),
+    };
+  };
+
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -701,7 +733,7 @@ export default function DoctorMfcDetail() {
       };
       setDraft(payload);
       await doctorFetch(`/mfc-cases/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
-      const discordImages = await buildDocxDiscordImagePayload(id);
+      const discordImages = await buildVisiblePreviewImagePayload();
       await doctorFetch(`/mfc-cases/${id}/complete`, { method: "POST", body: JSON.stringify(discordImages) });
       await queryClient.invalidateQueries({ queryKey: ["doctor-mfc-detail", id] });
       toast({
@@ -722,7 +754,7 @@ export default function DoctorMfcDetail() {
   const postToDiscord = async () => {
     try {
       setIsCompleting(true);
-      const discordImages = await buildDocxDiscordImagePayload(id);
+      const discordImages = await buildVisiblePreviewImagePayload();
       await doctorFetch(`/mfc-cases/${id}/post-to-discord`, { method: "POST", body: JSON.stringify(discordImages) });
       await queryClient.invalidateQueries({ queryKey: ["doctor-mfc-detail", id] });
       toast({
@@ -744,31 +776,18 @@ export default function DoctorMfcDetail() {
   const needsDiscordPost = isCompleted && !valueOf(draft, "discordMessageId").trim();
 
   const downloadDocxPreviewPage = async (page: 1 | 2) => {
-    const host = document.createElement("div");
-    host.className = "pointer-events-none fixed left-[-20000px] top-0 z-[-1]";
-    document.body.appendChild(host);
-
     try {
       const payload = buildDraftPayload();
       setDraft(payload);
       await doctorFetch(`/mfc-cases/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
-
-      const response = await fetch(withApiPath(`/documents/mfc/${id}/template.docx`), { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error(`DOCX fetch failed with status ${response.status}`);
-      }
-
-      const buffer = await response.arrayBuffer();
-      await renderDocxMfcPreview(host, buffer);
-      await downloadRenderedDocxPage(host, id, page);
+      const previewPayload = await buildVisiblePreviewImagePayload();
+      downloadBlob(page === 1 ? previewPayload.page1Blob : previewPayload.page2Blob, `mfc-${id}-docx-page-${page}.png`);
     } catch (error) {
       toast({
         title: `Failed to download page ${page}`,
-        description: error instanceof Error ? error.message : "Could not prepare the DOCX preview download.",
+        description: error instanceof Error ? error.message : "Could not prepare the preview download.",
         variant: "destructive",
       });
-    } finally {
-      host.remove();
     }
   };
 
@@ -862,6 +881,7 @@ export default function DoctorMfcDetail() {
 
         <div className="space-y-6">
           <div>
+          <div ref={pageOnePreviewRef}>
           <Paper>
             <CertificateHeader />
             <div className="px-12 pb-8 pt-4" style={{ fontFamily: CERTIFICATE_FONT }}>
@@ -930,8 +950,10 @@ export default function DoctorMfcDetail() {
             </div>
           </Paper>
           </div>
+          </div>
 
           <div>
+          <div ref={pageTwoPreviewRef}>
           <Paper>
             <CertificateHeader />
             <div className="px-12 pb-8 pt-4" style={{ fontFamily: CERTIFICATE_FONT }}>
@@ -1002,6 +1024,7 @@ export default function DoctorMfcDetail() {
               </div>
             </div>
           </Paper>
+          </div>
           </div>
         </div>
 
