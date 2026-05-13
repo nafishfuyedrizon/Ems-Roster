@@ -538,7 +538,7 @@ router.get("/stats/monthly-performers", async (req, res) => {
   for (const log of monthLogs) {
     const shiftMatches =
       shift === "all"      ? true :
-      shift === "Full"     ? ["Evening", "Night", "Midnight", "Full"].includes(log.shiftType) :
+      shift === "Full"     ? log.shiftType === "Full" :
       shift === "Evening"  ? log.shiftType === "Evening"  :
       shift === "Night"    ? log.shiftType === "Night"    :
       shift === "Midnight" ? log.shiftType === "Midnight" : true;
