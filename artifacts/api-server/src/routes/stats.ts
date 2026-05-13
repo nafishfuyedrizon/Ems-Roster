@@ -451,22 +451,19 @@ router.get("/stats/shift-roster", async (_req, res) => {
     let monthNight = 0;
     let monthMidnight = 0;
     let monthFull = 0;
-    let monthStoredFull = 0;
 
     const weeks = WEEKS.map(week => {
       const weekLogs = memberLogs.filter(l => l.weekStart === week.weekStart);
       const eveningMinutes = weekLogs.filter(l => l.shiftType === "Evening").reduce((s, l) => s + l.durationMinutes, 0);
       const nightMinutes = weekLogs.filter(l => l.shiftType === "Night").reduce((s, l) => s + l.durationMinutes, 0);
       const midnightMinutes = weekLogs.filter(l => l.shiftType === "Midnight").reduce((s, l) => s + l.durationMinutes, 0);
-      const storedFullMinutes = weekLogs.filter(l => l.shiftType === "Full").reduce((s, l) => s + l.durationMinutes, 0);
-      const fullMinutes = eveningMinutes + nightMinutes + midnightMinutes + storedFullMinutes;
-      const totalMinutes = eveningMinutes + nightMinutes + midnightMinutes + storedFullMinutes;
+      const fullMinutes = weekLogs.filter(l => l.shiftType === "Full").reduce((s, l) => s + l.durationMinutes, 0);
+      const totalMinutes = eveningMinutes + nightMinutes + midnightMinutes + fullMinutes;
 
       monthEvening += eveningMinutes;
       monthNight += nightMinutes;
       monthMidnight += midnightMinutes;
       monthFull += fullMinutes;
-      monthStoredFull += storedFullMinutes;
 
       return {
         weekStart: week.weekStart,
@@ -487,7 +484,7 @@ router.get("/stats/shift-roster", async (_req, res) => {
         evening: logs.filter(l => l.shiftType === "Evening").reduce((s, l) => s + l.durationMinutes, 0),
         night:   logs.filter(l => l.shiftType === "Night").reduce((s, l) => s + l.durationMinutes, 0),
         midnight:logs.filter(l => l.shiftType === "Midnight").reduce((s, l) => s + l.durationMinutes, 0),
-        full:    logs.filter(l => ["Evening", "Night", "Midnight", "Full"].includes(l.shiftType)).reduce((s, l) => s + l.durationMinutes, 0),
+        full:    logs.filter(l => l.shiftType === "Full").reduce((s, l) => s + l.durationMinutes, 0),
       };
     };
     const thisCal = calSum(thisCalPrefix);
@@ -505,7 +502,7 @@ router.get("/stats/shift-roster", async (_req, res) => {
       monthNight,
       monthMidnight,
       monthFull,
-      monthTotal: monthEvening + monthNight + monthMidnight + monthStoredFull,
+      monthTotal: monthEvening + monthNight + monthMidnight + monthFull,
       // calendar month totals
       thisCalTotal: thisCal.total, thisCalEvening: thisCal.evening, thisCalNight: thisCal.night, thisCalMidnight: thisCal.midnight, thisCalFull: thisCal.full,
       prevCalTotal: prevCal.total, prevCalEvening: prevCal.evening, prevCalNight: prevCal.night, prevCalMidnight: prevCal.midnight, prevCalFull: prevCal.full,
