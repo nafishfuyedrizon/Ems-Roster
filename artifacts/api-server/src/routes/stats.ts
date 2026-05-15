@@ -457,8 +457,9 @@ router.get("/stats/shift-roster", async (_req, res) => {
       const eveningMinutes = weekLogs.filter(l => l.shiftType === "Evening").reduce((s, l) => s + l.durationMinutes, 0);
       const nightMinutes = weekLogs.filter(l => l.shiftType === "Night").reduce((s, l) => s + l.durationMinutes, 0);
       const midnightMinutes = weekLogs.filter(l => l.shiftType === "Midnight").reduce((s, l) => s + l.durationMinutes, 0);
-      const fullMinutes = weekLogs.filter(l => l.shiftType === "Full").reduce((s, l) => s + l.durationMinutes, 0);
-      const totalMinutes = eveningMinutes + nightMinutes + midnightMinutes + fullMinutes;
+      const fullMinutes = eveningMinutes + nightMinutes + midnightMinutes;
+      const storedFullMinutes = weekLogs.filter(l => l.shiftType === "Full").reduce((s, l) => s + l.durationMinutes, 0);
+      const totalMinutes = fullMinutes + storedFullMinutes;
 
       monthEvening += eveningMinutes;
       monthNight += nightMinutes;
@@ -484,7 +485,7 @@ router.get("/stats/shift-roster", async (_req, res) => {
         evening: logs.filter(l => l.shiftType === "Evening").reduce((s, l) => s + l.durationMinutes, 0),
         night:   logs.filter(l => l.shiftType === "Night").reduce((s, l) => s + l.durationMinutes, 0),
         midnight:logs.filter(l => l.shiftType === "Midnight").reduce((s, l) => s + l.durationMinutes, 0),
-        full:    logs.filter(l => l.shiftType === "Full").reduce((s, l) => s + l.durationMinutes, 0),
+        full:    logs.filter(l => ["Evening", "Night", "Midnight"].includes(l.shiftType)).reduce((s, l) => s + l.durationMinutes, 0),
       };
     };
     const thisCal = calSum(thisCalPrefix);
@@ -538,7 +539,7 @@ router.get("/stats/monthly-performers", async (req, res) => {
   for (const log of monthLogs) {
     const shiftMatches =
       shift === "all"      ? true :
-      shift === "Full"     ? log.shiftType === "Full" :
+      shift === "Full"     ? ["Evening", "Night", "Midnight"].includes(log.shiftType) :
       shift === "Evening"  ? log.shiftType === "Evening"  :
       shift === "Night"    ? log.shiftType === "Night"    :
       shift === "Midnight" ? log.shiftType === "Midnight" : true;
